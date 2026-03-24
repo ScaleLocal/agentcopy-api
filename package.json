@@ -1,0 +1,9 @@
+{
+  "name": "agentcopy-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AgentCopyAI backend - website analysis + agent creation pipeline",
+  "engines": {
+    "node": ">=18"
+  }
+}
