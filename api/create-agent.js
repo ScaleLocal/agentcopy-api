@@ -333,20 +333,53 @@ async function getPlacesData(domain, siteTitle) {
 // ═══════════════════════════════════════════════════════════
 
 function buildProfile(slug, domain, siteContent, placesData) {
-  // Reject garbage page titles
+  // ── Extract and validate site title ──
   const badTitles = ['home', 'welcome', 'homepage', 'main', 'index', 'untitled', 'website', ''];
+  const usStates = 'AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|DC';
+
   let siteTitle = siteContent?.title?.split('|')[0]?.split('—')[0]?.split('-')[0]?.trim() || '';
-  // Also reject 404 / error page titles
+
+  // Reject error / not-found pages
   if (/404|not found|error|forbidden|access denied|bad gateway|service unavailable/i.test(siteTitle)) siteTitle = '';
+  // Reject generic single words
   if (badTitles.includes(siteTitle.toLowerCase())) siteTitle = '';
-  // Also reject titles that look like taglines (too many words, contain verbs like "is", "are", "we")
-  if (siteTitle && (siteTitle.split(' ').length > 5 || /\b(is|are|was|were|we|our|your|the best|trusted|leading|premier)\b/i.test(siteTitle))) {
-    siteTitle = '';
+  // Reject taglines with verbs
+  if (siteTitle && /\b(is|are|was|were|we|our|your|the best|trusted|leading|premier)\b/i.test(siteTitle)) siteTitle = '';
+  // Reject titles longer than 5 words
+  if (siteTitle && siteTitle.split(' ').length > 5) siteTitle = '';
+  // Reject SEO geo-modifier titles: contain a US state abbreviation or city+state pattern
+  // e.g. "Tewksbury MA Roofer", "Boston MA Plumber", "Denver CO Dentist"
+  if (siteTitle && new RegExp('\\b(' + usStates + ')\\b').test(siteTitle)) siteTitle = '';
+  // Reject pure trade/service descriptor titles with no proper noun
+  // A proper noun starts with a capital letter that isn't the first word
+  // If every word is a generic service/geo term, it's SEO, not a business name
+  if (siteTitle) {
+    const words = siteTitle.split(' ');
+    const tradeWords = /^(roofer|roofing|plumber|plumbing|electrician|contractor|dentist|dental|doctor|clinic|salon|lawyer|attorney|repair|service|services|company|solutions|group|local|certified|licensed|professional|expert|experts|specialist|specialists|affordable|best|top|quality)$/i;
+    const allGeneric = words.every(w => tradeWords.test(w) || /^[A-Z]{2}$/.test(w) || /^\d/.test(w));
+    if (allGeneric) siteTitle = '';
   }
 
-  // Priority: site title > domain-matched Places name > slug parsing
+  // ── Try to extract business name from meta description as fallback ──
+  // e.g. "Wooster Roofing in business since 1984..." → "Wooster Roofing"
+  let descName = '';
+  if (!siteTitle && siteContent?.description) {
+    const desc = siteContent.description;
+    // Match "BusinessName [verb/preposition]..." at the start of the description
+    const m = desc.match(/^([A-Z][A-Za-z0-9'&. ]{2,39})\s+(?:in business|is |has |was |offers|provides|serves|located)/);
+    if (m) {
+      const candidate = m[1].trim().replace(/[,.]$/, '');
+      // Only use if it looks like a proper business name (2–5 words, starts with capital)
+      if (candidate.split(' ').length <= 5 && /^[A-Z]/.test(candidate)) {
+        descName = candidate;
+      }
+    }
+  }
+
+  // ── Name priority: site title > description extraction > domain-matched Places > slug ──
   const placesNameMatchesDomain = placesData?.name && placesData?._domainMatched;
   let name = siteTitle
+    || descName
     || (placesNameMatchesDomain ? placesData.name : null)
     || formatSlugAsName(slug);
 
