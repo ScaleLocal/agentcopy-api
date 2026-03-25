@@ -179,7 +179,11 @@ async function getPlacesData(domain, siteTitle) {
     }),
   });
 
-  if (!response.ok) return null;
+  if (!response.ok) {
+    const errText = await response.text();
+    console.error(`[AgentCopy] Google Places error ${response.status}: ${errText.slice(0, 200)}`);
+    return null;
+  }
 
   const data = await response.json();
   const places = data.places || [];
@@ -228,9 +232,14 @@ function buildProfile(slug, domain, siteContent, placesData) {
 
   // Priority: Google Places > cleaned site title > smart slug parsing
   // Do NOT use meta descriptions — they're almost always taglines, not names
-  const name = placesData?.name
+  let name = placesData?.name
     || siteTitle
     || formatSlugAsName(slug);
+
+  // Fix ALL CAPS names: "SPENDLOCAL" → "Spendlocal", "BOYD CORP" → "Boyd Corp"
+  if (name === name.toUpperCase() && name.length > 2) {
+    name = name.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+  }
 
   const address = placesData?.address || '';
   const phone = placesData?.phone || '';
