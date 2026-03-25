@@ -286,8 +286,37 @@ async function getPlacesData(domain, siteTitle) {
     }
   }
 
+  // Strip trailing Google Places category noise from display name
+  // Google Places often appends category labels: "Villa Roma Pizza pizzeria restaurant"
+  // Strategy: only strip if the trailing word(s) are a DIFFERENT word from what's already
+  // in the name — i.e. it's genuinely appended noise, not part of the actual business name.
+  // "Villa Roma Pizza pizzeria" -> "Villa Roma Pizza" (pizzeria is noise)
+  // "Joe's Plumbing plumber"   -> "Joe's Plumbing"   (plumber is noise, Plumbing stays)
+  // "Green Meadow Dental dental" -> "Green Meadow Dental" (second dental is noise)
+  const noiseCategories = [
+    'restaurant','pizzeria','pizza place','cafe','coffee shop',
+    'plumber','electrician','dentist','doctor',
+    'clinic','barbershop','barber shop',
+    'hotel','motel','inn',
+    'pharmacy','bakery','brewery','winery',
+    'lawyer','attorney','accountant','realtor',
+    'manufacturer','distributor','supplier','wholesaler',
+    'auto repair','mechanic','car dealer',
+  ];
+  let rawName = match.displayName?.text || '';
+  for (const cat of noiseCategories) {
+    const escaped = cat.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // Only strip if this exact category word appears earlier in the name too,
+    // OR if the name without the suffix is still at least 2 words
+    const pattern = new RegExp('\\s+' + escaped + '\\s*$', 'i');
+    const stripped = rawName.replace(pattern, '').trim();
+    if (stripped !== rawName && stripped.split(' ').length >= 2) {
+      rawName = stripped;
+    }
+  }
+
   return {
-    name: match.displayName?.text || '',
+    name: rawName,
     address: domainMatched ? (match.formattedAddress || '') : '',
     phone: domainMatched ? (match.nationalPhoneNumber || '') : '',
     rating: domainMatched ? (match.rating || null) : null,
@@ -315,10 +344,7 @@ function buildProfile(slug, domain, siteContent, placesData) {
     siteTitle = '';
   }
 
-  // Priority: cleaned site title > smart slug parsing > Google Places (only if domain-matched)
-  // The website itself is the most reliable source for the business name.
-  // Google Places often returns wrong businesses (e.g. "Boyd Biomedical" for "boydcorp.com")
-  // so we only trust Places name if its websiteUri matches the actual domain we scraped.
+  // Priority: site title > domain-matched Places name > slug parsing
   const placesNameMatchesDomain = placesData?.name && placesData?._domainMatched;
   let name = siteTitle
     || (placesNameMatchesDomain ? placesData.name : null)
