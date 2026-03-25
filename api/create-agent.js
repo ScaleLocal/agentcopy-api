@@ -153,40 +153,54 @@ async function readWebsite(domain) {
   const apiKey = process.env.FIRECRAWL_API_KEY;
   if (!apiKey) throw new Error('FIRECRAWL_API_KEY not set');
 
-  const url = `https://${domain}`;
+  const urlsToTry = [`https://${domain}`, `https://www.${domain}`];
 
-  // Use Firecrawl's scrape endpoint for the main page
-  const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      url,
-      formats: ['markdown'],
-      onlyMainContent: true,
-      timeout: 15000,
-    }),
-  });
+  for (const url of urlsToTry) {
+    const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        url,
+        formats: ['markdown'],
+        onlyMainContent: true,
+        timeout: 15000,
+      }),
+    });
 
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`Firecrawl ${response.status}: ${errText}`);
+    if (!response.ok) {
+      const errText = await response.text();
+      console.warn(`[AgentCopy] Firecrawl ${response.status} for ${url}: ${errText.slice(0, 100)}`);
+      continue;
+    }
+
+    const data = await response.json();
+    if (!data.success) {
+      console.warn(`[AgentCopy] Firecrawl failed for ${url}: ${data.error}`);
+      continue;
+    }
+
+    const title = data.data?.metadata?.title || '';
+    const markdown = data.data?.markdown || '';
+
+    // Detect error pages — if we got one, try the next URL
+    if (/404|not found|error|forbidden|bad gateway/i.test(title) && markdown.length < 500) {
+      console.warn(`[AgentCopy] Error page detected at ${url} ("${title}") — trying next`);
+      continue;
+    }
+
+    console.log(`[AgentCopy] Scraped ${url} successfully ("${title}")`);
+    return {
+      title,
+      description: data.data?.metadata?.description || '',
+      markdown,
+      url: data.data?.metadata?.sourceURL || url,
+    };
   }
 
-  const data = await response.json();
-
-  if (!data.success) {
-    throw new Error(`Firecrawl failed: ${data.error || 'unknown error'}`);
-  }
-
-  return {
-    title: data.data?.metadata?.title || '',
-    description: data.data?.metadata?.description || '',
-    markdown: data.data?.markdown || '',
-    url: data.data?.metadata?.sourceURL || url,
-  };
+  throw new Error(`Could not scrape ${domain} — all URLs returned errors or empty pages`);
 }
 
 
@@ -286,6 +300,8 @@ function buildProfile(slug, domain, siteContent, placesData) {
   // Reject garbage page titles
   const badTitles = ['home', 'welcome', 'homepage', 'main', 'index', 'untitled', 'website', ''];
   let siteTitle = siteContent?.title?.split('|')[0]?.split('—')[0]?.split('-')[0]?.trim() || '';
+  // Also reject 404 / error page titles
+  if (/404|not found|error|forbidden|access denied|bad gateway|service unavailable/i.test(siteTitle)) siteTitle = '';
   if (badTitles.includes(siteTitle.toLowerCase())) siteTitle = '';
   // Also reject titles that look like taglines (too many words, contain verbs like "is", "are", "we")
   if (siteTitle && (siteTitle.split(' ').length > 5 || /\b(is|are|was|were|we|our|your|the best|trusted|leading|premier)\b/i.test(siteTitle))) {
