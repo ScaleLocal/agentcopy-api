@@ -225,14 +225,15 @@ function buildProfile(slug, domain, siteContent, placesData) {
   const badTitles = ['home', 'welcome', 'homepage', 'main', 'index', 'untitled', 'website', ''];
   let siteTitle = siteContent?.title?.split('|')[0]?.split('—')[0]?.split('-')[0]?.trim() || '';
   if (badTitles.includes(siteTitle.toLowerCase())) siteTitle = '';
+  // Also reject titles that look like taglines (too many words, contain verbs like "is", "are", "we")
+  if (siteTitle && (siteTitle.split(' ').length > 5 || /\b(is|are|was|were|we|our|your|the best|trusted|leading|premier)\b/i.test(siteTitle))) {
+    siteTitle = '';
+  }
 
-  // Also try og:site_name or description for business name
-  const descName = (siteContent?.description || '').split(/[.,:–—|]/, 1)[0]?.trim() || '';
-
-  // Priority: Google Places > og/meta title > description first sentence > slug
+  // Priority: Google Places > cleaned site title > smart slug parsing
+  // Do NOT use meta descriptions — they're almost always taglines, not names
   const name = placesData?.name
     || siteTitle
-    || (descName.length > 3 && descName.length < 60 ? descName : '')
     || formatSlugAsName(slug);
 
   const address = placesData?.address || '';
@@ -266,7 +267,43 @@ function buildProfile(slug, domain, siteContent, placesData) {
 
 function formatSlugAsName(slug) {
   const clean = slug.replace(/-(com|net|org|co|io|biz|us|info|dev|ai|app)$/i, '');
-  return clean.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+
+  // Split on hyphens first
+  let parts = clean.split('-').filter(Boolean);
+
+  // For single-word slugs (concatenated domains), try to split intelligently
+  // e.g. "boydcorp" → "Boyd Corp", "asahiamerica" → "Asahi America"
+  if (parts.length === 1 && parts[0].length > 6) {
+    const word = parts[0];
+    const suffixes = ['corp', 'inc', 'llc', 'group', 'tech', 'labs', 'works', 'systems',
+      'solutions', 'services', 'america', 'global', 'international', 'industries',
+      'enterprise', 'company', 'partners', 'associates', 'consulting', 'digital',
+      'media', 'design', 'studio', 'agency', 'pro', 'plus', 'hub', 'ai'];
+
+    let split = false;
+    for (const suffix of suffixes) {
+      if (word.toLowerCase().endsWith(suffix) && word.length > suffix.length + 2) {
+        const prefix = word.slice(0, word.length - suffix.length);
+        parts = [prefix, suffix];
+        split = true;
+        break;
+      }
+    }
+
+    // If no suffix match, try common prefixes
+    if (!split) {
+      const prefixes = ['the', 'my', 'get', 'try', 'go', 'use'];
+      for (const prefix of prefixes) {
+        if (word.toLowerCase().startsWith(prefix) && word.length > prefix.length + 2) {
+          parts = [prefix, word.slice(prefix.length)];
+          split = true;
+          break;
+        }
+      }
+    }
+  }
+
+  return parts.map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 
 function extractSection(markdown, keywords) {
