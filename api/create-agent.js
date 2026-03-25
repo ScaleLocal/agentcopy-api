@@ -192,10 +192,12 @@ async function getPlacesData(domain, siteTitle) {
   // Try to match by website domain
   let match = places.find(p => {
     const pDomain = (p.websiteUri || '').replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '').toLowerCase();
-    return pDomain === domain.toLowerCase() || pDomain.includes(domain.replace('.com', '').toLowerCase());
+    return pDomain === domain.toLowerCase() || pDomain.includes(domain.replace('.com', '').replace('.net', '').replace('.org', '').toLowerCase());
   });
 
-  // Fallback to first result
+  const domainMatched = !!match;
+
+  // Fallback to first result only if no domain match
   if (!match) match = places[0];
 
   // Format hours
@@ -206,12 +208,13 @@ async function getPlacesData(domain, siteTitle) {
 
   return {
     name: match.displayName?.text || '',
-    address: match.formattedAddress || '',
-    phone: match.nationalPhoneNumber || '',
-    rating: match.rating || null,
-    reviewCount: match.userRatingCount || 0,
-    hours: hoursStr,
+    address: domainMatched ? (match.formattedAddress || '') : '',
+    phone: domainMatched ? (match.nationalPhoneNumber || '') : '',
+    rating: domainMatched ? (match.rating || null) : null,
+    reviewCount: domainMatched ? (match.userRatingCount || 0) : 0,
+    hours: domainMatched ? hoursStr : '',
     types: match.types || [],
+    _domainMatched: domainMatched,
   };
 }
 
@@ -230,10 +233,13 @@ function buildProfile(slug, domain, siteContent, placesData) {
     siteTitle = '';
   }
 
-  // Priority: Google Places > cleaned site title > smart slug parsing
-  // Do NOT use meta descriptions — they're almost always taglines, not names
-  let name = placesData?.name
-    || siteTitle
+  // Priority: cleaned site title > smart slug parsing > Google Places (only if domain-matched)
+  // The website itself is the most reliable source for the business name.
+  // Google Places often returns wrong businesses (e.g. "Boyd Biomedical" for "boydcorp.com")
+  // so we only trust Places name if its websiteUri matches the actual domain we scraped.
+  const placesNameMatchesDomain = placesData?.name && placesData?._domainMatched;
+  let name = siteTitle
+    || (placesNameMatchesDomain ? placesData.name : null)
     || formatSlugAsName(slug);
 
   // Fix ALL CAPS names: "SPENDLOCAL" → "Spendlocal", "BOYD CORP" → "Boyd Corp"
