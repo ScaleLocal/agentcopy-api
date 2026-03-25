@@ -91,24 +91,20 @@ export default async function handler(req, res) {
 // ═══════════════════════════════════════════════════════════
 
 function resolveDomain(slug) {
-  // Strip TLD fragments that might have leaked into the slug
-  let clean = slug.replace(/-(com|net|org|co|io|biz|us|info|dev|ai|app)$/i, '');
+  // Check if the slug contains a TLD — if so, reconstruct the original domain
+  const tldMatch = slug.match(/^(.+)-(com|net|org|co|io|biz|us|info|dev|ai|app)$/i);
 
-  // Reconstruct likely domain
-  // "asahi-america" → "asahi-america.com"
-  // "joes-plumbing-lowell-ma" → "joes-plumbing-lowell-ma.com" (not ideal but Firecrawl will handle redirect)
-  // For slugs with city-state, try stripping that off for the domain
-  const states = 'al,ak,az,ar,ca,co,ct,de,fl,ga,hi,id,il,in,ia,ks,ky,la,me,md,ma,mi,mn,ms,mo,mt,ne,nv,nh,nj,nm,ny,nc,nd,oh,ok,or,pa,ri,sc,sd,tn,tx,ut,vt,va,wa,wv,wi,wy'.split(',');
-  const parts = clean.split('-');
-  const last = (parts[parts.length - 1] || '').toLowerCase();
-
-  if (states.includes(last) && parts.length > 2) {
-    // Has a state suffix — try to find where the business name ends
-    // For domain resolution, use the full slug (firecrawl may not find it, but we try)
-    return clean + '.com';
+  if (tldMatch) {
+    // Slug has a TLD: "spendlocal-net" → "spendlocal.net"
+    // "asahi-america-com" → "asahi-america.com"
+    const domainPart = tldMatch[1]; // everything before the TLD
+    const tld = tldMatch[2].toLowerCase();
+    return domainPart + '.' + tld;
   }
 
-  return clean + '.com';
+  // No TLD detected — this is a pure slug like "asahi-america"
+  // Default to .com
+  return slug + '.com';
 }
 
 
@@ -520,6 +516,7 @@ async function createGHLAgent(profile, systemPrompt) {
           channels: ['WebChat', 'Live_Chat'],
           waitTime: 1,
           waitTimeUnit: 'seconds',
+          knowledgeBaseIds: [],
         }),
       });
 
