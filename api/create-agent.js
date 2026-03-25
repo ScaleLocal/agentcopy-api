@@ -10,8 +10,45 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { slug } = req.body || {};
+  const { slug, signupData } = req.body || {};
   if (!slug) return res.status(400).json({ error: 'Missing slug' });
+
+  // ── Signup form submission — skip the pipeline entirely ──
+  if (slug === '__signup__') {
+    if (process.env.GHL_TOKEN && process.env.GHL_LOCATION_ID && signupData) {
+      try {
+        const nameParts = (signupData.contactName || '').trim().split(/\s+/);
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
+        await fetch('https://services.leadconnectorhq.com/contacts/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.GHL_TOKEN}`,
+            'Version': '2021-07-28',
+          },
+          body: JSON.stringify({
+            locationId: process.env.GHL_LOCATION_ID,
+            firstName,
+            lastName,
+            name: signupData.contactName,
+            email: signupData.email,
+            phone: signupData.phone,
+            companyName: signupData.businessName,
+            source: 'AgentCopyAI Signup',
+            tags: ['signup', 'agentcopy', signupData.plan || 'unknown-plan'],
+            customFields: [
+              { key: 'plan_selected', field_value: signupData.plan || '' },
+            ],
+          }),
+        });
+        console.log(`[AgentCopy] Signup contact created: ${signupData.email} (${signupData.plan})`);
+      } catch (err) {
+        console.error('[AgentCopy] Signup contact error:', err.message);
+      }
+    }
+    return res.status(200).json({ ok: true });
+  }
 
   const startTime = Date.now();
 
@@ -200,10 +237,32 @@ async function getPlacesData(domain, siteTitle) {
   // Fallback to first result only if no domain match
   if (!match) match = places[0];
 
-  // Format hours
+  // Format hours smartly
   let hoursStr = '';
   if (match.currentOpeningHours?.weekdayDescriptions) {
-    hoursStr = match.currentOpeningHours.weekdayDescriptions.join('; ');
+    const days = match.currentOpeningHours.weekdayDescriptions; // e.g. ["Monday: Open 24 hours", ...]
+    const hoursParts = days.map(d => d.split(': ').slice(1).join(': ').trim());
+
+    const allSame = hoursParts.every(h => h === hoursParts[0]);
+    const is24_7 = allSame && /open 24 hours/i.test(hoursParts[0]);
+    const weekdays = hoursParts.slice(0, 5); // Mon–Fri
+    const weekend = hoursParts.slice(5, 7);  // Sat–Sun
+    const wdSame = weekdays.every(h => h === weekdays[0]);
+    const weSame = weekend.every(h => h === weekend[0]);
+
+    if (is24_7) {
+      hoursStr = 'Open 24/7';
+    } else if (allSame) {
+      hoursStr = 'Open daily: ' + hoursParts[0];
+    } else if (wdSame && weSame && weekend[0] && weekend[0] !== weekdays[0]) {
+      hoursStr = 'Mon–Fri: ' + weekdays[0] + ' · Sat–Sun: ' + weekend[0];
+    } else if (wdSame && weSame && /closed/i.test(weekend[0])) {
+      hoursStr = 'Mon–Fri: ' + weekdays[0] + ' · Weekends: Closed';
+    } else {
+      // Compact full list: "Mon: 9am–5pm · Tue: 9am–5pm ..."
+      const shortDay = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+      hoursStr = days.map((d, i) => shortDay[i] + ': ' + (hoursParts[i] || 'Closed')).join(' · ');
+    }
   }
 
   return {
@@ -377,10 +436,10 @@ function truncate(str, max) {
 // ═══════════════════════════════════════════════════════════
 
 function generateSystemPrompt(profile) {
-  let prompt = `You are the AI receptionist for ${profile.name}.
+  let prompt = `You are the AI website agent for ${profile.name}.
 
 YOUR ROLE:
-You answer phone calls and chat messages for ${profile.name}. You are friendly, professional, and knowledgeable. You speak naturally — short sentences, conversational tone. You are NOT a chatbot. You are a receptionist who knows this business inside and out.
+You assist visitors on ${profile.name}'s website via chat and voice. You are friendly, professional, and knowledgeable. You speak naturally — short sentences, conversational tone. You are NOT a generic chatbot. You are a knowledgeable assistant who knows this business inside and out and helps website visitors get answers fast.
 
 BUSINESS INFORMATION:
 - Business: ${profile.name}`;
@@ -414,14 +473,14 @@ BUSINESS INFORMATION:
   prompt += `
 
 RULES:
-1. Greet the caller: "Thanks for reaching out to ${profile.name}. How can I help you today?"
-2. Answer questions ONLY from the information above. If you don't know something, say: "That's a great question. Let me have someone from the team get back to you on that. Can I get your name and number?"
-3. If the caller wants to book an appointment or schedule service, collect: their name, phone number, what they need, and preferred time. Confirm the details back.
+1. Greet the visitor: "Hey, thanks for visiting ${profile.name}! How can I help you today?"
+2. Answer questions ONLY from the information above. If you don't know something, say: "That's a great question — let me have someone from the team follow up with you on that. Can I get your name and email?"
+3. If the visitor wants to book an appointment or schedule service, collect: their name, phone or email, what they need, and preferred time. Confirm the details back.
 4. Keep responses under 3 sentences when possible. Sound human, not robotic.
-5. Never volunteer that you are AI unless directly asked. If asked, say: "I'm an AI assistant for ${profile.name}. I can help with most questions, or connect you with the team directly."
-6. If asked about pricing you don't have specifics for, say: "Pricing depends on the specifics of your project. I can have someone reach out with a detailed quote. Would that work?"
-7. If the caller seems frustrated or asks for a manager, say: "I completely understand. Let me get someone from the team to help you directly." Then collect their info for a callback.
-8. Be warm but efficient. Business owners respect their customers' time.`;
+5. Never volunteer that you are AI unless directly asked. If asked, say: "I'm an AI assistant for ${profile.name}. I can answer most questions, or connect you with the team directly."
+6. If asked about pricing you don't have specifics for, say: "Pricing depends on the specifics of your project — I can have someone reach out with a detailed quote. Would that work?"
+7. If the visitor seems frustrated, say: "I completely understand. Let me get someone from the team to help you directly." Then collect their contact info.
+8. Be warm but efficient. Respect the visitor's time.`;
 
   return prompt;
 }
@@ -480,7 +539,7 @@ async function createGHLAgent(profile, systemPrompt) {
   if (chatBotId) {
     try {
       // Build a rich personality with all the business data from Firecrawl
-      let personality = `You are the AI receptionist for ${profile.name}. You are friendly, professional, and knowledgeable about this business.\n\nBUSINESS: ${profile.name}`;
+      let personality = `You are the AI website agent for ${profile.name}. You assist visitors on this website via chat and voice — answering questions, capturing leads, and helping visitors get the information they need fast.\n\nBUSINESS: ${profile.name}`;
       if (profile.address) personality += `\nLOCATION: ${profile.address}`;
       if (profile.phone) personality += `\nPHONE: ${profile.phone}`;
       if (profile.hours) personality += `\nHOURS: ${profile.hours}`;
