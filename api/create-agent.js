@@ -221,9 +221,18 @@ async function getPlacesData(domain, siteTitle) {
 // ═══════════════════════════════════════════════════════════
 
 function buildProfile(slug, domain, siteContent, placesData) {
-  // Start with Google Places data (more reliable for name/address)
+  // Reject garbage page titles
+  const badTitles = ['home', 'welcome', 'homepage', 'main', 'index', 'untitled', 'website', ''];
+  let siteTitle = siteContent?.title?.split('|')[0]?.split('—')[0]?.split('-')[0]?.trim() || '';
+  if (badTitles.includes(siteTitle.toLowerCase())) siteTitle = '';
+
+  // Also try og:site_name or description for business name
+  const descName = (siteContent?.description || '').split(/[.,:–—|]/, 1)[0]?.trim() || '';
+
+  // Priority: Google Places > og/meta title > description first sentence > slug
   const name = placesData?.name
-    || siteContent?.title?.split('|')[0]?.split('-')[0]?.trim()
+    || siteTitle
+    || (descName.length > 3 && descName.length < 60 ? descName : '')
     || formatSlugAsName(slug);
 
   const address = placesData?.address || '';
@@ -377,23 +386,51 @@ RULES:
 async function createGHLAgent(profile, systemPrompt) {
   const token = process.env.GHL_TOKEN;
   const locationId = process.env.GHL_LOCATION_ID;
-  if (!token || !locationId) return null;
+  const voiceAgentId = process.env.GHL_VOICE_AGENT_ID;
+  if (!token || !locationId || !voiceAgentId) {
+    console.log('[AgentCopy] Missing GHL config — skipping agent update');
+    return null;
+  }
 
-  // Note: GHL Agent Studio API endpoints for programmatic voice agent
-  // creation may have limited availability. This function will be
-  // expanded as GHL v2 API surfaces these capabilities.
-  //
-  // Current approach:
-  // 1. Create/update a contact in GHL for this business
-  // 2. When Voice AI API is available: create agent with systemPrompt
-  // 3. Return phone number + widget embed code
+  try {
+    // Update Voice AI agent with business-specific prompt
+    const patchUrl = `https://services.leadconnectorhq.com/voice-ai/agents/${voiceAgentId}?locationId=${locationId}`;
 
-  // For now, return null — agent creation will be wired in
-  // once AI Employee is active and we verify available endpoints
-  console.log(`[AgentCopy] GHL agent creation pending — AI Employee not yet active`);
-  console.log(`[AgentCopy] System prompt generated: ${systemPrompt.length} chars`);
+    const welcomeMsg = `Thanks for reaching out to ${profile.name}. How can I help you today?`;
 
-  return null;
+    const response = await fetch(patchUrl, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'Version': '2021-07-28',
+      },
+      body: JSON.stringify({
+        businessName: profile.name,
+        welcomeMessage: welcomeMsg.slice(0, 190),
+        agentPrompt: systemPrompt,
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error(`[AgentCopy] Voice AI PATCH failed ${response.status}: ${errText}`);
+      return null;
+    }
+
+    const data = await response.json();
+    console.log(`[AgentCopy] Voice AI agent updated → ${profile.name}`);
+
+    return {
+      phone: data.inboundNumber || null,
+      widgetEmbed: null,
+      chatWidgetId: null,
+    };
+
+  } catch (err) {
+    console.error('[AgentCopy] GHL agent update error:', err.message);
+    return null;
+  }
 }
 
 async function trackDemoOpen(profile) {
