@@ -251,31 +251,38 @@ async function getPlacesData(domain, siteTitle) {
   // Fallback to first result only if no domain match
   if (!match) match = places[0];
 
-  // Format hours smartly
+  // Format hours — compress consecutive days with identical hours into ranges
+  // e.g. "Tue–Sun: 11:00 AM – 9:00 PM · Mon: Closed"
   let hoursStr = '';
   if (match.currentOpeningHours?.weekdayDescriptions) {
-    const days = match.currentOpeningHours.weekdayDescriptions; // e.g. ["Monday: Open 24 hours", ...]
+    const days = match.currentOpeningHours.weekdayDescriptions;
+    const shortDay = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
     const hoursParts = days.map(d => d.split(': ').slice(1).join(': ').trim());
-
     const allSame = hoursParts.every(h => h === hoursParts[0]);
     const is24_7 = allSame && /open 24 hours/i.test(hoursParts[0]);
-    const weekdays = hoursParts.slice(0, 5); // Mon–Fri
-    const weekend = hoursParts.slice(5, 7);  // Sat–Sun
-    const wdSame = weekdays.every(h => h === weekdays[0]);
-    const weSame = weekend.every(h => h === weekend[0]);
 
     if (is24_7) {
       hoursStr = 'Open 24/7';
     } else if (allSame) {
       hoursStr = 'Open daily: ' + hoursParts[0];
-    } else if (wdSame && weSame && weekend[0] && weekend[0] !== weekdays[0]) {
-      hoursStr = 'Mon–Fri: ' + weekdays[0] + ' · Sat–Sun: ' + weekend[0];
-    } else if (wdSame && weSame && /closed/i.test(weekend[0])) {
-      hoursStr = 'Mon–Fri: ' + weekdays[0] + ' · Weekends: Closed';
     } else {
-      // Compact full list: "Mon: 9am–5pm · Tue: 9am–5pm ..."
-      const shortDay = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-      hoursStr = days.map((d, i) => shortDay[i] + ': ' + (hoursParts[i] || 'Closed')).join(' · ');
+      // Group consecutive days with the same hours into ranges
+      const groups = [];
+      let i = 0;
+      while (i < 7) {
+        let j = i + 1;
+        while (j < 7 && hoursParts[j] === hoursParts[i]) j++;
+        const span = j - i;
+        const label = span === 1 ? shortDay[i]
+          : span === 2 ? shortDay[i] + ', ' + shortDay[j - 1]
+          : shortDay[i] + '–' + shortDay[j - 1];
+        groups.push({ label, hours: hoursParts[i] });
+        i = j;
+      }
+      // Open hours first, Closed at end
+      const open = groups.filter(g => !/closed/i.test(g.hours));
+      const closed = groups.filter(g => /closed/i.test(g.hours));
+      hoursStr = [...open, ...closed].map(g => g.label + ': ' + g.hours).join(' · ');
     }
   }
 
