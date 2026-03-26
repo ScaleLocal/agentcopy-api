@@ -1,15 +1,16 @@
 {
   "version": 2,
   "functions": {
-    "api/proxy.js": { "maxDuration": 15 },
+    "api/proxy.js":      { "maxDuration": 15 },
     "api/create-agent.js": { "maxDuration": 30 },
-    "api/checkout.js": { "maxDuration": 10 }
+    "api/checkout.js":   { "maxDuration": 10 },
+    "api/webhook.js":    { "maxDuration": 30 }
   },
   "headers": [
     {
       "source": "/api/(.*)",
       "headers": [
-        { "key": "Access-Control-Allow-Origin", "value": "https://agentcopyai.com" },
+        { "key": "Access-Control-Allow-Origin",  "value": "https://agentcopyai.com" },
         { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
         { "key": "Access-Control-Allow-Headers", "value": "Content-Type" }
       ]
