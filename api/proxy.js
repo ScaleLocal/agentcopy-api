@@ -1,11 +1,11 @@
 // AgentCopyAI — Site Proxy
 // GET /api/proxy?url=https://wooster-roofing.com
-// Fetches the target URL server-side, strips X-Frame-Options and CSP headers,
-// rewrites ALL relative URLs to absolute, and returns embeddable HTML.
+// Fetches target URL server-side, strips security headers, rewrites all
+// relative URLs to absolute, fixes CORS issues for SPA frameworks.
 
 export default async function handler(req, res) {
-  const origin = process.env.ALLOWED_ORIGIN || 'https://agentcopyai.com';
-  res.setHeader('Access-Control-Allow-Origin', origin);
+  const allowedOrigin = process.env.ALLOWED_ORIGIN || 'https://agentcopyai.com';
+  res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -32,7 +32,6 @@ export default async function handler(req, res) {
         'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9',
-        'Accept-Encoding': 'gzip, deflate, br',
         'Cache-Control': 'no-cache',
       },
       redirect: 'follow',
@@ -41,6 +40,7 @@ export default async function handler(req, res) {
 
     const contentType = upstream.headers.get('content-type') || 'text/html';
 
+    // Non-HTML: pass through (images, CSS, fonts etc)
     if (!contentType.includes('text/html')) {
       const body = await upstream.arrayBuffer();
       res.setHeader('Content-Type', contentType);
@@ -51,52 +51,46 @@ export default async function handler(req, res) {
     let html = await upstream.text();
     const siteOrigin = target.origin; // e.g. https://spendlocal.net
 
-    // ── Step 1: Rewrite ALL root-relative asset URLs to absolute BEFORE anything else ──
-    // This fixes Vite/React/Next SPAs where <script src="/assets/..."> loads JS bundles.
-    // We must do this before injecting <base> because browsers process <script> and
-    // <link rel="modulepreload"> tags before <base> takes effect.
+    // ── 1. Remove crossorigin attributes ──────────────────────────────────────
+    // Vite/webpack add crossorigin to <script type="module"> and <link rel="modulepreload">.
+    // When our proxy serves the HTML, the browser origin is our proxy domain.
+    // crossorigin triggers a CORS preflight — spendlocal's JS bundle CORS headers
+    // only allow 'self' (spendlocal.net), so the CORS check fails and the script
+    // never executes → blank white page.
+    // Fix: remove crossorigin so the browser fetches these as normal (no-cors) requests.
+    html = html.replace(/\scrossorigin(="[^"]*")?/gi, '');
 
-    // src="/..." → src="https://origin/..."
+    // ── 2. Rewrite ALL root-relative URLs to absolute ─────────────────────────
+    // Must happen BEFORE <base> injection because browsers process <script src>
+    // and <link href> before <base> takes effect in some parsers.
+    
+    // src="/..." href="/..." action="/..."
     html = html.replace(
-      /(\s(?:src|href|action|data-src|data-href)=["'])\/(?!\/)/g,
+      /(\s(?:src|href|action|data-src|data-href)=['"])\//g,
       `$1${siteOrigin}/`
     );
+    // url(/...) in inline styles
+    html = html.replace(/url\((['"]?)\//g, `url($1${siteOrigin}/`);
+    // srcset entries starting with /
+    html = html.replace(/(\ssrcset=['"][^'"]*)\s\//g, `$1 ${siteOrigin}/`);
 
-    // url(/...) in inline styles → url(https://origin/...)
-    html = html.replace(
-      /url\((['"]?)\/(?!\/)/g,
-      `url($1${siteOrigin}/`
-    );
-
-    // srcset="/..." → srcset="https://origin/..."  (may have multiple entries)
-    html = html.replace(
-      /(\ssrcset=["'][^"']*\s?)\/(?!\/)/g,
-      `$1${siteOrigin}/`
-    );
-
-    // import("/"...) and import '/'... in inline scripts (Vite dynamic imports)
-    html = html.replace(
-      /(import\s*\(["'])\/(?!\/)/g,
-      `$1${siteOrigin}/`
-    );
-    html = html.replace(
-      /(from\s+["'])\/(?!\/)/g,
-      `$1${siteOrigin}/`
-    );
-
-    // ── Step 2: Inject <base> as FIRST child of <head> (belt-and-suspenders) ──
+    // ── 3. Inject <base> as first child of <head> (belt-and-suspenders) ──────
     if (!html.includes('<base ')) {
       html = html.replace(/(<head[^>]*>)/i, `$1<base href="${siteOrigin}/">`);
     }
 
-    // ── Step 3: Strip things that break iframe context ──
+    // ── 4. Strip things that break iframe/proxy context ───────────────────────
+    // Manifest links (not needed, can cause errors)
     html = html.replace(/<link[^>]+rel=["']?manifest["']?[^>]*>/gi, '');
+    // Service worker registration (breaks in iframe context)
     html = html.replace(/navigator\.serviceWorker\.register[^;]+;/gi, '');
-    // Remove Content-Security-Policy meta tags (they'd block our widget)
+    // CSP meta tags — would block our GHL widget injection
     html = html.replace(/<meta[^>]+http-equiv=["']Content-Security-Policy["'][^>]*>/gi, '');
+    // Remove X-Frame-Options meta equivalent if any
+    html = html.replace(/<meta[^>]+http-equiv=["']X-Frame-Options["'][^>]*>/gi, '');
 
-    // ── Step 4: Scroll to top on load ──
-    const scrollReset = `<script>window.addEventListener('load',function(){setTimeout(function(){window.scrollTo(0,0);},100);});<\/script>`;
+    // ── 5. Scroll to top after load ───────────────────────────────────────────
+    const scrollReset = `<script>window.addEventListener('load',function(){setTimeout(function(){window.scrollTo(0,0);},150);});<\/script>`;
     if (html.includes('</body>')) {
       html = html.replace('</body>', scrollReset + '</body>');
     } else {
