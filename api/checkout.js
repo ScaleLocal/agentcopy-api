@@ -1,5 +1,5 @@
 // AgentCopyAI — Checkout router
-// POST /api/checkout  { plan: 'starter'|'growth'|'scale' }
+// POST /api/checkout  { plan: 'm2m'|'6mo'|'12mo' }
 // Returns the correct Stripe Payment Link URL
 
 export default async function handler(req, res) {
@@ -12,16 +12,16 @@ export default async function handler(req, res) {
 
   const { plan } = req.body || {};
 
-  // Stripe Payment Links (public buy.stripe.com URLs — safe to include in code)
-  // Created via Stripe API for ScaleLocal / AgentCopyAI
+  // Stripe Payment Links — ScaleLocal / AgentCopyAI
+  // All collect: name, email, phone, company name, website URL
   const links = {
-    starter: 'https://buy.stripe.com/eVqeVedVFfYbbZiaol3Je01',  // $249/mo + $249 setup, M2M
-    growth:  'https://buy.stripe.com/7sYdRabNx13hfbu6853Je02',  // $249/mo, 6-month commitment
-    scale:   'https://buy.stripe.com/5kQ14og3NaDR4wQ5413Je03',  // $249/mo, 12-month, month 12 free
+    m2m:  'https://buy.stripe.com/aFadRa2cXdQ37J2aol3Je04', // $249 setup + $249/mo M2M
+    '6mo':'https://buy.stripe.com/eVq4gAg3N3bp4wQdAx3Je05', // $249/mo · 6-month · no setup
+    '12mo':'https://buy.stripe.com/fZu8wQ2cX7rF4wQaol3Je06', // $249/mo · 12-month · month 12 free
   };
 
   const url = links[plan];
-  if (!url) return res.status(400).json({ error: 'Invalid plan: must be starter, growth, or scale' });
+  if (!url) return res.status(400).json({ error: 'Invalid plan. Use: m2m, 6mo, or 12mo' });
 
   return res.status(200).json({ url });
 }
