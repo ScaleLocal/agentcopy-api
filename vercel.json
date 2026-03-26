@@ -1,12 +1,9 @@
 {
   "version": 2,
   "functions": {
-    "api/proxy.js": {
-      "maxDuration": 15
-    },
-    "api/create-agent.js": {
-      "maxDuration": 30
-    }
+    "api/proxy.js": { "maxDuration": 15 },
+    "api/create-agent.js": { "maxDuration": 30 },
+    "api/checkout.js": { "maxDuration": 10 }
   },
   "headers": [
     {

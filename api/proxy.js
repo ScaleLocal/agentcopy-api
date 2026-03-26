@@ -1,7 +1,5 @@
 // AgentCopyAI — Site Proxy
 // GET /api/proxy?url=https://wooster-roofing.com
-// Fetches target URL server-side, strips security headers, rewrites all
-// relative URLs to absolute, fixes CORS issues for SPA frameworks.
 
 export default async function handler(req, res) {
   const allowedOrigin = process.env.ALLOWED_ORIGIN || 'https://agentcopyai.com';
@@ -40,7 +38,6 @@ export default async function handler(req, res) {
 
     const contentType = upstream.headers.get('content-type') || 'text/html';
 
-    // Non-HTML: pass through (images, CSS, fonts etc)
     if (!contentType.includes('text/html')) {
       const body = await upstream.arrayBuffer();
       res.setHeader('Content-Type', contentType);
@@ -49,48 +46,64 @@ export default async function handler(req, res) {
     }
 
     let html = await upstream.text();
-    const siteOrigin = target.origin; // e.g. https://spendlocal.net
+    const siteOrigin = target.origin;
 
-    // ── 1. Remove crossorigin attributes ──────────────────────────────────────
-    // Vite/webpack add crossorigin to <script type="module"> and <link rel="modulepreload">.
-    // When our proxy serves the HTML, the browser origin is our proxy domain.
-    // crossorigin triggers a CORS preflight — spendlocal's JS bundle CORS headers
-    // only allow 'self' (spendlocal.net), so the CORS check fails and the script
-    // never executes → blank white page.
-    // Fix: remove crossorigin so the browser fetches these as normal (no-cors) requests.
+    // ── 1. Remove crossorigin attributes ──────────────────────────────────
+    // Vite/webpack add crossorigin to module scripts. In our proxy context the
+    // CORS origin check fails → scripts blocked → blank page. Remove it.
     html = html.replace(/\scrossorigin(="[^"]*")?/gi, '');
 
-    // ── 2. Rewrite ALL root-relative URLs to absolute ─────────────────────────
-    // Must happen BEFORE <base> injection because browsers process <script src>
-    // and <link href> before <base> takes effect in some parsers.
-    
-    // src="/..." href="/..." action="/..."
-    html = html.replace(
-      /(\s(?:src|href|action|data-src|data-href)=['"])\//g,
-      `$1${siteOrigin}/`
-    );
-    // url(/...) in inline styles
+    // ── 2. Rewrite ALL root-relative URLs to absolute ─────────────────────
+    html = html.replace(/(\s(?:src|href|action|data-src|data-href)=['"])\//g, `$1${siteOrigin}/`);
     html = html.replace(/url\((['"]?)\//g, `url($1${siteOrigin}/`);
-    // srcset entries starting with /
-    html = html.replace(/(\ssrcset=['"][^'"]*)\s\//g, `$1 ${siteOrigin}/`);
 
-    // ── 3. Inject <base> as first child of <head> (belt-and-suspenders) ──────
+    // ── 3. Inject <base> as first child of <head> ─────────────────────────
     if (!html.includes('<base ')) {
       html = html.replace(/(<head[^>]*>)/i, `$1<base href="${siteOrigin}/">`);
     }
 
-    // ── 4. Strip things that break iframe/proxy context ───────────────────────
-    // Manifest links (not needed, can cause errors)
+    // ── 4. Strip iframe/proxy-breaking elements ───────────────────────────
     html = html.replace(/<link[^>]+rel=["']?manifest["']?[^>]*>/gi, '');
-    // Service worker registration (breaks in iframe context)
     html = html.replace(/navigator\.serviceWorker\.register[^;]+;/gi, '');
-    // CSP meta tags — would block our GHL widget injection
     html = html.replace(/<meta[^>]+http-equiv=["']Content-Security-Policy["'][^>]*>/gi, '');
-    // Remove X-Frame-Options meta equivalent if any
     html = html.replace(/<meta[^>]+http-equiv=["']X-Frame-Options["'][^>]*>/gi, '');
 
-    // ── 5. Scroll to top after load ───────────────────────────────────────────
-    const scrollReset = `<script>window.addEventListener('load',function(){setTimeout(function(){window.scrollTo(0,0);},150);});<\/script>`;
+    // ── 5. Critical injections — added as FIRST script in <head> ──────────
+    const headInjection = `<script>
+// Fix 1: React Router / Vue Router / Angular Router blank page fix
+// When served via proxy, window.location.pathname = "/api/proxy" which
+// matches no app routes → blank render. Reset to "/" before app boots.
+(function(){
+  try {
+    if (window.location.pathname !== '/') {
+      history.replaceState(null, '', '/');
+    }
+  } catch(e) {}
+})();
+
+// Fix 2: Block all link navigation inside this demo iframe.
+// Without this, clicking any link causes the outer page to reload
+// (due to allow-top-navigation on the sandbox) and breaks the demo.
+document.addEventListener('DOMContentLoaded', function() {
+  document.addEventListener('click', function(e) {
+    var a = e.target.closest('a');
+    if (a && a.href && !a.href.startsWith('#') && !a.href.startsWith('mailto') && !a.href.startsWith('tel')) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, true);
+  // Also block form submissions that would navigate
+  document.addEventListener('submit', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }, true);
+});
+<\/script>`;
+
+    html = html.replace(/(<head[^>]*>)/i, `$1${headInjection}`);
+
+    // ── 6. Scroll to top after load ───────────────────────────────────────
+    const scrollReset = `<script>window.addEventListener('load',function(){setTimeout(function(){window.scrollTo(0,0);},200);});<\/script>`;
     if (html.includes('</body>')) {
       html = html.replace('</body>', scrollReset + '</body>');
     } else {
