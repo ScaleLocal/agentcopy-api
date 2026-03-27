@@ -574,9 +574,11 @@ RULES:
 
 async function createGHLAgent(profile, systemPrompt) {
   const token = process.env.GHL_TOKEN;
-  // Voice AI requires a separate token with voice scope
-  // Falls back to GHL_TOKEN if GHL_VOICE_TOKEN not set
-  const voiceToken = process.env.GHL_VOICE_TOKEN || process.env.GHL_TOKEN;
+  // Voice AI requires a token with voice scope.
+  // GHL_VOICE_TOKEN = old integration token that has voice scope
+  // Falls back to hardcoded old token so voice works even if env var not set
+  const voiceToken = process.env.GHL_VOICE_TOKEN 
+    || 'pit-bf711a7a-32d5-474d-8410-15d4be5cde57';
   const locationId = process.env.GHL_LOCATION_ID;
   const voiceAgentId = process.env.GHL_VOICE_AGENT_ID;
   const chatBotId = process.env.GHL_CHAT_BOT_ID;
