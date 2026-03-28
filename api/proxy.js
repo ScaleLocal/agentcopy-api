@@ -49,193 +49,96 @@ export default async function handler(req, res) {
     const siteOrigin = target.origin;
 
     // ── 1. Remove crossorigin attributes ──────────────────────────────────
-    // Vite/webpack add crossorigin to module scripts. In our proxy context the
-    // CORS origin check fails → scripts blocked → blank page. Remove it.
     html = html.replace(/\scrossorigin(="[^"]*")?/gi, '');
 
-    // ── 2. Rewrite ALL root-relative URLs to absolute ─────────────────────
+    // ── 2. Rewrite root-relative URLs to absolute ──────────────────────────
     html = html.replace(/(\s(?:src|href|action|data-src|data-href)=['"])\//g, `$1${siteOrigin}/`);
     html = html.replace(/url\((['"]?)\//g, `url($1${siteOrigin}/`);
 
-    // ── 2b. Inject CSS to hide cookie/GDPR banners immediately ─────────────
-    // Prevents cookie banners from ever appearing in the demo — no need to click anything
-    const cookieHideCSS = `<style>
-      #moove_gdpr_cookie_info_bar, #moove_gdpr_cookie_modal,
-      #cookie-notice, #cookie-banner, #cookie-consent, #cookie-bar,
-      #cookie_notice, .cookie-notice, .cookie-banner, .cookie-bar,
-      .cookie-consent, .cookie-policy, .cookie-popup, .cookie-overlay,
-      #gdpr-cookie-notice, .gdpr-cookie-notice, .gdpr-banner,
-      #gdpr_cookie_box, .gdpr_cookie_box, [id*="gdpr"], [class*="gdpr"],
-      [id*="cookie-bar"], [class*="cookie-bar"],
-      [id*="cookie_bar"], [class*="cookie_bar"],
-      [id*="cookie-notice"], [class*="cookie-notice"],
-      [id*="cookie-banner"], [class*="cookie-banner"],
-      [id*="cookie-consent"], [class*="cookie-consent"],
-      [id*="cookiefirst"], [class*="cookiefirst"],
-      [id*="cookieyes"], [class*="cookieyes"],
-      [id*="cc-banner"], [class*="cc-banner"],
-      [id*="cc-window"], [class*="cc-window"],
-      #onetrust-banner-sdk, #onetrust-consent-sdk,
-      .onetrust-pc-dark-filter, #ot-sdk-btn-floating,
-      .iubenda-cs-container, #iubenda-cs-banner,
-      [class*="cky-"], [id*="cky-"],
-      [class*="termly-"], [id*="termly-"],
-      .pum-overlay, .pum-container,
-      [class*="disclaimer"], [id*="disclaimer"],
-      [class*="liability"], [id*="liability"] { 
-        display: none !important; 
-        visibility: hidden !important;
-        opacity: 0 !important;
-        pointer-events: none !important;
-      }
-    </style>`;
-    html = html.replace(/(<head[^>]*>)/i, `$1${cookieHideCSS}`);
-
-    // ── 3. Inject <base> as first child of <head> ─────────────────────────
+    // ── 3. Add <base> tag ──────────────────────────────────────────────────
     if (!html.includes('<base ')) {
       html = html.replace(/(<head[^>]*>)/i, `$1<base href="${siteOrigin}/">`);
     }
 
-    // ── 4. Strip iframe/proxy-breaking elements ───────────────────────────
+    // ── 4. Strip security headers that break iframes ──────────────────────
     html = html.replace(/<link[^>]+rel=["']?manifest["']?[^>]*>/gi, '');
     html = html.replace(/navigator\.serviceWorker\.register[^;]+;/gi, '');
     html = html.replace(/<meta[^>]+http-equiv=["']Content-Security-Policy["'][^>]*>/gi, '');
     html = html.replace(/<meta[^>]+http-equiv=["']X-Frame-Options["'][^>]*>/gi, '');
 
-    // ── 5. Critical injections — added as FIRST script in <head> ──────────
-    const headInjection = `<script>
-// Fix 1: React Router / Vue Router / Angular Router blank page fix
-// When served via proxy, window.location.pathname = "/api/proxy" which
-// matches no app routes → blank render. Reset to "/" before app boots.
+    // ── 5. Inject script at top of <head> ─────────────────────────────────
+    const headScript = `<script>
+// Fix SPA blank page: reset pathname before app router boots
 (function(){
-  try {
-    if (window.location.pathname !== '/') {
-      history.replaceState(null, '', '/');
-    }
-  } catch(e) {}
+  try { if(window.location.pathname !== '/') history.replaceState(null,'','/'); } catch(e){}
 })();
 
-// Fix 0: Pre-accept all known consent cookies so popups never fire
-// Injected before any page scripts run
-document.cookie = 'terms_accepted=true; max-age=31536000; path=/; samesite=lax';
-document.cookie = 'moove_gdpr_popup={"strict":1,"thirdparty":1,"advanced":1}; max-age=31536000; path=/; samesite=lax';
-document.cookie = 'cookielawinfo-checkbox-necessary=yes; max-age=31536000; path=/; samesite=lax';
-document.cookie = 'cookielawinfo-checkbox-analytics=yes; max-age=31536000; path=/; samesite=lax';
-document.cookie = 'cookielawinfo-checkbox-functional=yes; max-age=31536000; path=/; samesite=lax';
-document.cookie = 'CookieConsent=true; max-age=31536000; path=/; samesite=lax';
-document.cookie = 'cookie_consent=accepted; max-age=31536000; path=/; samesite=lax';
-document.cookie = 'gdpr_cookie_accepted=true; max-age=31536000; path=/; samesite=lax';
+// Pre-accept consent cookies so banners/popups never initialize
+(function(){
+  var cookies = [
+    'terms_accepted=true',
+    'moove_gdpr_popup={"strict":1,"thirdparty":1,"advanced":1}',
+    'cookielawinfo-checkbox-necessary=yes',
+    'cookielawinfo-checkbox-analytics=yes',
+    'cookielawinfo-checkbox-functional=yes',
+    'CookieConsent=true',
+    'cookie_consent=accepted',
+    'gdpr_cookie_accepted=true'
+  ];
+  var opts = '; max-age=31536000; path=/; samesite=lax';
+  cookies.forEach(function(c){ document.cookie = c + opts; });
+})();
 
-// Fix 0b: Kill popup/modal templates and overlay elements ASAP via DOM manipulation
-// Runs before DOMContentLoaded so popups never get cloned/shown
-(function killPopupsEarly() {
-  function removePopups() {
-    // Kill terms popup template so it can never be cloned
-    var templates = document.querySelectorAll('#terms-popup-template, #terms-popup, .modal-terms, .popup-overlay, .popup-content');
-    templates.forEach(function(el) { el.remove(); });
-    // Kill any visible modal/popup overlays
-    var modals = document.querySelectorAll('.modal-open, [class*="popup"], [class*="modal-terms"], [id*="terms-popup"]');
-    modals.forEach(function(el) {
-      if (el.tagName !== 'BODY') el.remove();
-    });
-    document.body && document.body.classList.remove('modal-open');
-  }
-  // Run immediately
-  removePopups();
-  // Run again after scripts fire (terms popup has 500ms delay)
-  setTimeout(removePopups, 100);
-  setTimeout(removePopups, 600);
-  setTimeout(removePopups, 1200);
-  // MutationObserver to catch dynamically appended popups
+// Hide consent/cookie/terms UI elements via CSS — injected before page CSS
+document.write('<style id="_proxy_hide">' +
+  '#moove_gdpr_cookie_info_bar, #moove_gdpr_cookie_modal,' +
+  '#cookie-notice, #cookie-banner, #cookie-law-info-bar,' +
+  '.cookie-notice, .cookie-banner, .cookie-bar,' +
+  '#onetrust-banner-sdk, #onetrust-consent-sdk,' +
+  '.iubenda-cs-container, [id*="cookieyes"], [class*="cookieyes"],' +
+  '[id*="cky-"], [class*="cky-"], [id*="termly-"], [class*="termly-"],' +
+  '#terms-popup, .modal-terms, .terms-modal,' +
+  '[id*="disclaimer"]:not(section):not(p), [id*="liability"]:not(section):not(p)' +
+  '{ display:none !important; visibility:hidden !important; }' +
+'</style>');
+
+// MutationObserver: catch and remove the Asahi terms popup (500ms delayed)
+// Only targets the specific #terms-popup id — not broad "popup" classes
+document.addEventListener('DOMContentLoaded', function() {
   var obs = new MutationObserver(function(mutations) {
     mutations.forEach(function(m) {
       m.addedNodes.forEach(function(node) {
-        if (node.nodeType === 1) {
-          var id = node.id || '';
-          var cls = (node.className || '').toString();
-          if (id.indexOf('terms') > -1 || id.indexOf('popup') > -1 || id.indexOf('modal') > -1 ||
-              cls.indexOf('modal-terms') > -1 || cls.indexOf('popup') > -1) {
-            node.remove();
-          }
+        if (node.nodeType !== 1) return;
+        if (node.id === 'terms-popup' || node.classList.contains('modal-terms')) {
+          node.remove();
         }
       });
     });
   });
-  document.addEventListener('DOMContentLoaded', function() {
-    obs.observe(document.body, { childList: true, subtree: true });
-    removePopups();
-  });
-})();
+  obs.observe(document.body, { childList: true, subtree: false });
 
-// Fix 2: Block ALL navigation inside this demo iframe.
-// This is a display-only demo — no clicks should navigate away.
-// Covers: <a> links, <button> clicks that trigger location changes,
-// cookie banners, consent dialogs, form submissions.
-(function() {
-  // Override location navigation methods immediately (before any scripts run)
-  try {
-    var noop = function() {};
-    // Trap location changes
-    var loc = window.location;
-    Object.defineProperty(window, 'location', {
-      get: function() { return loc; },
-      set: function(v) { /* block navigation */ }
-    });
-    var _assign = loc.assign.bind(loc);
-    loc.assign = noop;
-    loc.replace = noop;
-  } catch(e) {}
-
-  document.addEventListener('DOMContentLoaded', function() {
-    // Block link clicks
-    document.addEventListener('click', function(e) {
-      var a = e.target.closest('a');
-      if (a && a.href && !a.href.startsWith('#') && !a.href.startsWith('mailto:') && !a.href.startsWith('tel:')) {
-        e.preventDefault();
-        e.stopPropagation();
-        return false;
-      }
-      // Block buttons that are part of cookie/consent banners
-      // Identified by common patterns: accept, reject, consent, cookie, gdpr, ccpa, dismiss, close
-      var btn = e.target.closest('button, [role="button"]');
-      if (btn) {
-        var text = (btn.textContent || '').toLowerCase();
-        var id = (btn.id || '').toLowerCase();
-        var cls = (btn.className || '').toLowerCase();
-        var combined = text + ' ' + id + ' ' + cls;
-        var isCookieBtn = /accept|reject|decline|dismiss|consent|cookie|gdpr|ccpa|privacy|allow|deny|agree|disagree|necessary|preferences|close banner|got it/.test(combined);
-        if (isCookieBtn) {
-          e.preventDefault();
-          e.stopPropagation();
-          // Try to hide the banner instead
-          var banner = btn.closest('[class*="cookie"],[class*="consent"],[class*="gdpr"],[class*="banner"],[class*="notice"],[id*="cookie"],[id*="consent"],[id*="gdpr"],[id*="banner"]');
-          if (banner) banner.style.display = 'none';
-          return false;
-        }
-      }
-    }, true);
-
-    // Block form submissions
-    document.addEventListener('submit', function(e) {
+  // Block link navigation (display-only demo)
+  document.addEventListener('click', function(e) {
+    var a = e.target.closest('a');
+    if (a && a.href && !a.href.startsWith('#') && !a.href.startsWith('mailto:') && !a.href.startsWith('tel:')) {
       e.preventDefault();
       e.stopPropagation();
-    }, true);
+    }
+    // Block form submissions
+  }, true);
 
-    // Block beforeunload navigation
-    window.onbeforeunload = function() { return false; };
-  });
-})();
+  document.addEventListener('submit', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }, true);
+});
 <\/script>`;
 
-    html = html.replace(/(<head[^>]*>)/i, `$1${headInjection}`);
+    html = html.replace(/(<head[^>]*>)/i, `$1${headScript}`);
 
-    // ── 6. Scroll to top after load ───────────────────────────────────────
+    // ── 6. Scroll reset after load ─────────────────────────────────────────
     const scrollReset = `<script>window.addEventListener('load',function(){setTimeout(function(){window.scrollTo(0,0);},200);});<\/script>`;
-    if (html.includes('</body>')) {
-      html = html.replace('</body>', scrollReset + '</body>');
-    } else {
-      html += scrollReset;
-    }
+    html = html.includes('</body>') ? html.replace('</body>', scrollReset + '</body>') : html + scrollReset;
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=300');
