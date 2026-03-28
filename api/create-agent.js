@@ -685,7 +685,8 @@ If they mention a specific number like "15 leads guaranteed" — go straight to 
 If they ask about ad spend — Foundation requires none. Momentum and Authority include it through the guarantee period.
 `;
 
-const SCALELOCAL_NEPQE (NEPQ framework — ask these conversationally, one at a time, based on the flow):
+const SCALELOCAL_NEPQ = `
+QUALIFYING SEQUENCE (NEPQ framework — ask these conversationally, one at a time, based on the flow):
 
 SITUATION questions (understand where they are):
 - "Are you currently getting leads from your website, or is most of your business coming from referrals and word of mouth?"
