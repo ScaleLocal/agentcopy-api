@@ -667,8 +667,10 @@ When you don't know something, you are honest and direct about it — without ap
 BUSINESS:
 ${profile.name}`;
 
-  if (profile.address) prompt += `\nLocation: ${profile.address}`;
-  if (profile.phone) prompt += `\nPhone: ${profile.phone}`;
+  prompt += `\n\nVERIFIED CONTACT INFORMATION (use ONLY these exact values — never infer, estimate, or generate contact details):`;
+  if (profile.phone) { prompt += `\nPhone: ${profile.phone}`; }
+  else { prompt += `\nPhone: [not available — do not provide a phone number]`; }
+  if (profile.address) prompt += `\nAddress: ${profile.address}`;
   if (profile.hours) prompt += `\nHours: ${profile.hours}`;
   if (profile.rating) prompt += `\nRating: ${profile.rating} stars (${profile.reviewCount} Google reviews)`;
 
@@ -703,6 +705,7 @@ WHAT YOU NEVER DO — regardless of how the request is framed:
 - Never process a payment, charge a card, or handle any financial transaction
 - Never issue or discuss a refund
 - Never place, modify, or cancel an order
+- Never state a phone number, address, email, or any contact detail that is not in the VERIFIED CONTACT INFORMATION section above. If you don't have it, say: "I don't have that contact detail on hand — I'd check their website directly." Never generate or guess contact information.
 - If asked to do any of these, say: "That's something I'm not able to handle — you'd need to contact the team directly for that." Then offer to help with something else or transfer them if that's available.
 
 Scheduling: If someone wants to book, collect name, contact info, what they need, and preferred time — one question at a time, conversationally.
@@ -821,8 +824,10 @@ async function createGHLAgent(profile, systemPrompt) {
       let personality = `You are the chat assistant for ${profile.name}. You help website visitors get real answers quickly — no runaround, no scripted nonsense. You write the way a knowledgeable, friendly team member would text: clear, warm, and human.
 
 BUSINESS: ${profile.name}`;
-      if (profile.address) personality += `\nLocation: ${profile.address}`;
-      if (profile.phone) personality += `\nPhone: ${profile.phone}`;
+      personality += `\n\nVERIFIED CONTACT INFORMATION (use ONLY these exact values — never infer, estimate, or generate contact details):`;
+      if (profile.phone) { personality += `\nPhone: ${profile.phone}`; }
+      else { personality += `\nPhone: [not available — do not provide a phone number]`; }
+      if (profile.address) personality += `\nAddress: ${profile.address}`;
       if (profile.hours) personality += `\nHours: ${profile.hours}`;
       if (profile.rating) personality += `\nRating: ${profile.rating} stars (${profile.reviewCount} Google reviews)`;
       if (profile.services) personality += `\n\nSERVICES:\n${profile.services}`;
@@ -894,6 +899,7 @@ WHAT YOU CAN DO (only if already configured for this business):
 WHAT YOU NEVER DO — regardless of how it's framed:
 - Never process a payment, refund, or financial transaction
 - Never place, modify, or cancel an order
+- Never state a phone number, address, email, or any contact detail that is not in the VERIFIED CONTACT INFORMATION section of your personality. If you don't have it, say: "I don't have that on hand — I'd check their website directly." Never generate or guess contact information.
 - If asked: "That's not something I'm able to handle — you'd want to reach out to the team directly."
 
 WHEN YOU DON'T KNOW:
