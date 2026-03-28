@@ -15,7 +15,7 @@ export default async function handler(req, res) {
   // Stripe Payment Links — ScaleLocal / AgentCopyAI
   // All collect: name, email, phone, company name, website URL
   const links = {
-    m2m:  'https://buy.stripe.com/aFadRa2cXdQ37J2aol3Je04', // $249 setup + $249/mo M2M
+    m2m:  'https://buy.stripe.com/8x2bJ25p9dQ38N69kh3Je07', // $249 setup (One-Time Setup Fee) + $249/mo (AI Website Agent) M2M
     '6mo':'https://buy.stripe.com/eVq4gAg3N3bp4wQdAx3Je05', // $249/mo · 6-month · no setup
     '12mo':'https://buy.stripe.com/fZu8wQ2cX7rF4wQaol3Je06', // $249/mo · 12-month · month 12 free
   };

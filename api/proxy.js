@@ -57,6 +57,40 @@ export default async function handler(req, res) {
     html = html.replace(/(\s(?:src|href|action|data-src|data-href)=['"])\//g, `$1${siteOrigin}/`);
     html = html.replace(/url\((['"]?)\//g, `url($1${siteOrigin}/`);
 
+    // ── 2b. Inject CSS to hide cookie/GDPR banners immediately ─────────────
+    // Prevents cookie banners from ever appearing in the demo — no need to click anything
+    const cookieHideCSS = `<style>
+      #moove_gdpr_cookie_info_bar, #moove_gdpr_cookie_modal,
+      #cookie-notice, #cookie-banner, #cookie-consent, #cookie-bar,
+      #cookie_notice, .cookie-notice, .cookie-banner, .cookie-bar,
+      .cookie-consent, .cookie-policy, .cookie-popup, .cookie-overlay,
+      #gdpr-cookie-notice, .gdpr-cookie-notice, .gdpr-banner,
+      #gdpr_cookie_box, .gdpr_cookie_box, [id*="gdpr"], [class*="gdpr"],
+      [id*="cookie-bar"], [class*="cookie-bar"],
+      [id*="cookie_bar"], [class*="cookie_bar"],
+      [id*="cookie-notice"], [class*="cookie-notice"],
+      [id*="cookie-banner"], [class*="cookie-banner"],
+      [id*="cookie-consent"], [class*="cookie-consent"],
+      [id*="cookiefirst"], [class*="cookiefirst"],
+      [id*="cookieyes"], [class*="cookieyes"],
+      [id*="cc-banner"], [class*="cc-banner"],
+      [id*="cc-window"], [class*="cc-window"],
+      #onetrust-banner-sdk, #onetrust-consent-sdk,
+      .onetrust-pc-dark-filter, #ot-sdk-btn-floating,
+      .iubenda-cs-container, #iubenda-cs-banner,
+      [class*="cky-"], [id*="cky-"],
+      [class*="termly-"], [id*="termly-"],
+      .pum-overlay, .pum-container,
+      [class*="disclaimer"], [id*="disclaimer"],
+      [class*="liability"], [id*="liability"] { 
+        display: none !important; 
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+      }
+    </style>`;
+    html = html.replace(/(<head[^>]*>)/i, `$1${cookieHideCSS}`);
+
     // ── 3. Inject <base> as first child of <head> ─────────────────────────
     if (!html.includes('<base ')) {
       html = html.replace(/(<head[^>]*>)/i, `$1<base href="${siteOrigin}/">`);
