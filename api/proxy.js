@@ -81,23 +81,64 @@ export default async function handler(req, res) {
   } catch(e) {}
 })();
 
-// Fix 2: Block all link navigation inside this demo iframe.
-// Without this, clicking any link causes the outer page to reload
-// (due to allow-top-navigation on the sandbox) and breaks the demo.
-document.addEventListener('DOMContentLoaded', function() {
-  document.addEventListener('click', function(e) {
-    var a = e.target.closest('a');
-    if (a && a.href && !a.href.startsWith('#') && !a.href.startsWith('mailto') && !a.href.startsWith('tel')) {
+// Fix 2: Block ALL navigation inside this demo iframe.
+// This is a display-only demo — no clicks should navigate away.
+// Covers: <a> links, <button> clicks that trigger location changes,
+// cookie banners, consent dialogs, form submissions.
+(function() {
+  // Override location navigation methods immediately (before any scripts run)
+  try {
+    var noop = function() {};
+    // Trap location changes
+    var loc = window.location;
+    Object.defineProperty(window, 'location', {
+      get: function() { return loc; },
+      set: function(v) { /* block navigation */ }
+    });
+    var _assign = loc.assign.bind(loc);
+    loc.assign = noop;
+    loc.replace = noop;
+  } catch(e) {}
+
+  document.addEventListener('DOMContentLoaded', function() {
+    // Block link clicks
+    document.addEventListener('click', function(e) {
+      var a = e.target.closest('a');
+      if (a && a.href && !a.href.startsWith('#') && !a.href.startsWith('mailto:') && !a.href.startsWith('tel:')) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      }
+      // Block buttons that are part of cookie/consent banners
+      // Identified by common patterns: accept, reject, consent, cookie, gdpr, ccpa, dismiss, close
+      var btn = e.target.closest('button, [role="button"]');
+      if (btn) {
+        var text = (btn.textContent || '').toLowerCase();
+        var id = (btn.id || '').toLowerCase();
+        var cls = (btn.className || '').toLowerCase();
+        var combined = text + ' ' + id + ' ' + cls;
+        var isCookieBtn = /accept|reject|decline|dismiss|consent|cookie|gdpr|ccpa|privacy|allow|deny|agree|disagree|necessary|preferences|close banner|got it/.test(combined);
+        if (isCookieBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+          // Try to hide the banner instead
+          var banner = btn.closest('[class*="cookie"],[class*="consent"],[class*="gdpr"],[class*="banner"],[class*="notice"],[id*="cookie"],[id*="consent"],[id*="gdpr"],[id*="banner"]');
+          if (banner) banner.style.display = 'none';
+          return false;
+        }
+      }
+    }, true);
+
+    // Block form submissions
+    document.addEventListener('submit', function(e) {
       e.preventDefault();
       e.stopPropagation();
-    }
-  }, true);
-  // Also block form submissions that would navigate
-  document.addEventListener('submit', function(e) {
-    e.preventDefault();
-    e.stopPropagation();
-  }, true);
-});
+    }, true);
+
+    // Block beforeunload navigation
+    window.onbeforeunload = function() { return false; };
+  });
+})();
 <\/script>`;
 
     html = html.replace(/(<head[^>]*>)/i, `$1${headInjection}`);
