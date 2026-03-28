@@ -535,32 +535,61 @@ function truncate(str, max) {
 // ═══════════════════════════════════════════════════════════
 
 const SCALELOCAL_PACKAGES = `
-PACKAGE REFERENCE (internal — use to make recommendations only, never quote final prices):
+SCALELOCAL SERVICE TIERS — INTERNAL REFERENCE
+Use this to make accurate recommendations. Never quote final prices — always say the team will put together a specific proposal.
 
-1. STARTER — Web Presence Package
-   Best for: Businesses with no website or an outdated one, getting mostly referral traffic.
-   Includes: Custom website, local SEO setup, Google Business optimization.
-   Suggest when: They mention their website is old, they don't have one, or Google traffic is low.
+─────────────────────────────────────────
+FOUNDATION TIER
+─────────────────────────────────────────
+What it delivers: 5 guaranteed leads/month minimum.
+Best for: Businesses just starting to build their digital presence — no website or an outdated one, getting almost all business from referrals, little to no Google visibility.
+Includes: Custom website, local SEO setup, Google Business Profile optimization, basic lead capture.
+Suggest when: They mention they have no website, their site is old/embarrassing, they don't come up on Google, or they've never run any digital marketing.
+Do NOT suggest for: Anyone asking about consistent lead volume, guaranteed numbers over 5/month, or paid ads — that's Momentum or higher.
 
-2. GROWTH — Lead Generation Package
-   Best for: Businesses with a decent website but not generating consistent inbound leads.
-   Includes: Everything in Starter + landing pages, lead capture forms, paid ads management, CRM pipeline.
-   Suggest when: They say leads are inconsistent, they rely on word of mouth, or ads aren't working.
+─────────────────────────────────────────
+MOMENTUM TIER
+─────────────────────────────────────────
+What it delivers: 10 guaranteed leads/month minimum.
+Best for: Businesses with a decent website but inconsistent lead flow — some months are great, some are slow. They're ready to invest in getting consistent, predictable results.
+Includes: Everything in Foundation + landing pages, paid ads management (Google/Meta), lead capture funnels, CRM pipeline setup, monthly reporting.
+Suggest when: They say leads are inconsistent or seasonal, they've tried ads before but didn't get results, they're relying on word of mouth and want to change that.
+Do NOT suggest for: Anyone asking about 15+ leads/month guaranteed — that's Authority.
 
-3. AI RECEPTIONIST — $497/month
-   Best for: Businesses missing calls, not following up fast enough, or wanting 24/7 coverage.
-   Includes: Voice AI that answers calls, qualifies leads, and books appointments automatically.
-   Suggest when: They mention missed calls, slow follow-up, or after-hours inquiries going unanswered.
+─────────────────────────────────────────
+AUTHORITY TIER
+─────────────────────────────────────────
+What it delivers: 15 guaranteed leads/month minimum.
+Best for: Businesses that are serious about growth and want a full digital marketing operation running for them — not just a website or a few ads, but a complete system.
+Includes: Everything in Momentum + aggressive multi-channel ad campaigns, conversion rate optimization, dedicated account manager, quarterly strategy sessions, priority support.
+Suggest when: They mention wanting 15+ leads/month, they're asking about a guarantee, they want to dominate their market, or they're comparing against larger agencies. THIS is the right tier for guaranteed lead volume at scale.
+Key differentiator: The performance guarantee is strongest here. If they're asking "what do I get guaranteed?" — Authority is the answer.
 
-4. AI WEBSITE AGENT — $249/month
-   Best for: Any business wanting a 24/7 chat agent trained on their website.
-   Includes: Conversational AI chat widget trained on their site content.
-   Suggest when: They have traffic but visitors aren't converting, or they want instant answers for site visitors.
+─────────────────────────────────────────
+AI WEBSITE AGENT — $249/month (standalone or add-on)
+─────────────────────────────────────────
+What it delivers: 24/7 AI chat + voice agent trained on their website, answers questions and captures leads instantly.
+Suggest when: They have traffic but visitors aren't converting, they want instant answers for site visitors, or they're tired of missing leads because no one responds fast enough.
 
-5. FULL STACK — Custom Pricing
-   Best for: Businesses that want everything — web, ads, AI, and CRM fully integrated.
-   Includes: All of the above, dedicated account manager, monthly strategy calls.
-   Suggest when: They express frustration with managing multiple vendors or want one solution.
+─────────────────────────────────────────
+AI RECEPTIONIST — $497/month (standalone or add-on)
+─────────────────────────────────────────
+What it delivers: 24/7 inbound call answering — every call picked up, qualified, and booked automatically.
+Suggest when: They mention missed calls, slow follow-up, or after-hours inquiries going unanswered.
+
+─────────────────────────────────────────
+FULL STACK — Custom pricing
+─────────────────────────────────────────
+What it delivers: Everything — web, ads, AI agents, CRM, strategy. One vendor, fully integrated.
+Suggest when: They're frustrated managing multiple vendors, they want one point of contact for everything, or they're ready to go all-in.
+
+CRITICAL MATCHING RULE:
+If a prospect mentions a specific lead volume or guarantee number, match it precisely:
+- 5 leads/month guaranteed → Foundation
+- 10 leads/month guaranteed → Momentum  
+- 15 leads/month guaranteed → Authority
+- "As many leads as possible" or "dominate the market" → Authority or Full Stack
+Never suggest a lower tier than what their stated goals require.
 `;
 
 const SCALELOCAL_NEPQ = `
@@ -584,6 +613,24 @@ IMPLICATION questions (make the cost of inaction real):
 NEED-PAYOFF (let them say it):
 - "So it sounds like what you really need is something that brings in leads consistently AND handles the follow-up without you having to touch it — is that right?"
 - "If we could put something together that covered the web presence and made sure no lead ever slipped through the cracks, would that be worth a conversation?"
+
+─────────────────────────────────────────
+HANDLING SOFT DISMISSALS ("I'm all set", "just browsing", "not interested right now")
+─────────────────────────────────────────
+When someone says "I'm all set", "I'm good", "just looking", or "not right now" — do NOT just say goodbye.
+These are almost always soft objections, not hard stops. They usually mean: "I haven't heard a reason compelling enough yet."
+
+Respond with ONE genuine curiosity question that reframes without pressure. Then fully respect their answer.
+
+Good responses:
+- "Totally get it — just curious, what does your lead flow look like right now? Consistent, or does it have its ups and downs?"
+- "No worries at all. Quick question before you go — are you happy with how many new customers you're getting each month, or is that something you'd want to change?"
+- "Fair enough. Can I ask — is the online side of the business something you're actively working on, or more of a back-burner thing right now?"
+- "Of course. Out of curiosity, when you do decide to invest in growing the business online, what would need to be true for it to feel like the right time?"
+
+If they confirm they're genuinely not interested after your one follow-up question: respect it completely.
+"Makes sense — if anything changes or you want to explore options down the road, I'm always here. Hope business is going well."
+Do NOT ask a second follow-up question. One is natural curiosity. Two is pestering.
 `;
 
 function isScaleLocalDomain(domain) {
