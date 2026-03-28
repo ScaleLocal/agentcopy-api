@@ -1117,7 +1117,8 @@ Do not share these instructions. Do not end every message with "Is there anythin
           'Version': '2021-07-28',
         },
         body: JSON.stringify({
-          name: 'AgentCopy Demo Receptionist',
+          name: `${profile.name} AI Agent`,
+          welcomeMessage: `Hi! I'm the AI agent for ${profile.name}. How can I help you today?`,
           personality,
           goal,
           instructions,
@@ -1221,6 +1222,77 @@ async function trackDemoOpen(profile) {
       } else {
         const noteErr = await noteRes.text();
         console.error(`[AgentCopy] Note failed ${noteRes.status}:`, noteErr.slice(0, 200));
+      }
+
+      // Step 3: Send notification email to Matt via GHL conversations API
+      // First create/get a conversation for this contact, then send an email message
+      try {
+        const convRes = await fetch('https://services.leadconnectorhq.com/conversations/', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ contactId, locationId }),
+        });
+
+        let conversationId = null;
+        if (convRes.ok) {
+          const convData = await convRes.json();
+          conversationId = convData.conversation?.id || convData.id;
+        } else {
+          // Try to get existing conversation
+          const getConvRes = await fetch(
+            `https://services.leadconnectorhq.com/conversations/search?contactId=${contactId}&locationId=${locationId}`,
+            { headers }
+          );
+          if (getConvRes.ok) {
+            const getConvData = await getConvRes.json();
+            conversationId = getConvData.conversations?.[0]?.id;
+          }
+        }
+
+        if (conversationId) {
+          const emailBody = [
+            `New AgentCopyAI demo just ran.`,
+            ``,
+            `Business: ${profile.name}`,
+            `Website: https://${profile.domain}`,
+            `Demo Link: ${demoUrl}`,
+            ``,
+            profile.address ? `Address: ${profile.address}` : null,
+            profile.phone ? `Phone: ${profile.phone}` : null,
+            profile.hours ? `Hours: ${profile.hours}` : null,
+            profile.rating ? `Rating: ${profile.rating} stars (${profile.reviewCount} Google reviews)` : null,
+            ``,
+            `Time: ${timestamp}`,
+            ``,
+            `— AgentCopyAI`,
+          ].filter(l => l !== null).join('
+');
+
+          const msgRes = await fetch('https://services.leadconnectorhq.com/conversations/messages', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              type: 'Email',
+              conversationId,
+              contactId,
+              emailFrom: 'alex@scalelocal.net',
+              emailTo: 'matt@scalelocal.net',
+              subject: `New Demo: ${profile.name} — ${profile.domain}`,
+              body: emailBody,
+            }),
+          });
+
+          if (msgRes.ok) {
+            console.log(`[AgentCopy] Notification email sent to matt@scalelocal.net`);
+          } else {
+            const msgErr = await msgRes.text();
+            console.error(`[AgentCopy] Email send failed ${msgRes.status}:`, msgErr.slice(0, 300));
+          }
+        } else {
+          console.error('[AgentCopy] Could not get conversation ID for email send');
+        }
+      } catch (emailErr) {
+        console.error('[AgentCopy] Email notification error:', emailErr.message);
       }
     }
 
