@@ -337,7 +337,22 @@ function buildProfile(slug, domain, siteContent, placesData) {
   const badTitles = ['home', 'welcome', 'homepage', 'main', 'index', 'untitled', 'website', ''];
   const usStates = 'AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|DC';
 
-  let siteTitle = siteContent?.title?.split('|')[0]?.split('—')[0]?.split('-')[0]?.trim() || '';
+  // Extract business name from page title — try all segments split by | — -
+  // e.g. "Home - Highline Tree Services" → try each segment, pick the best one
+  let siteTitle = '';
+  if (siteContent?.title) {
+    const segments = siteContent.title.split(/[|\u2014\-]/).map(s => s.trim()).filter(Boolean);
+    // Pick the longest segment that isn't a generic word — usually the actual business name
+    const genericSingle = new Set(['home', 'welcome', 'homepage', 'main', 'index', 'untitled', 'website', 'about', 'contact', 'services', 'page']);
+    for (const seg of segments) {
+      if (seg && !genericSingle.has(seg.toLowerCase()) && seg.split(' ').length >= 2) {
+        siteTitle = seg;
+        break;
+      }
+    }
+    // Fallback: just use first segment
+    if (!siteTitle) siteTitle = segments[0] || '';
+  }
 
   // Reject error / not-found pages
   if (/404|not found|error|forbidden|access denied|bad gateway|service unavailable/i.test(siteTitle)) siteTitle = '';
@@ -376,11 +391,13 @@ function buildProfile(slug, domain, siteContent, placesData) {
     }
   }
 
-  // ── Name priority: site title > description extraction > domain-matched Places > slug ──
+  // ── Name priority: domain-matched Places > site title > description extraction > slug ──
+  // Google Places is the most authoritative source for the correct business name.
+  // If Places matched on domain, it wins — avoids typos and SEO garbage from page titles.
   const placesNameMatchesDomain = placesData?.name && placesData?._domainMatched;
-  let name = siteTitle
+  let name = (placesNameMatchesDomain ? placesData.name : null)
+    || siteTitle
     || descName
-    || (placesNameMatchesDomain ? placesData.name : null)
     || formatSlugAsName(slug);
 
   // Fix ALL CAPS names: "SPENDLOCAL" → "Spendlocal", "BOYD CORP" → "Boyd Corp"
@@ -843,12 +860,14 @@ BUSINESS: ${profile.name}`;
         personality = personality.slice(0, 9900) + '\n\n[Additional details available on request]';
       }
 
+      // Must declare isScaleLocal BEFORE using it in goal
+      const isScaleLocal = isScaleLocalDomain(profile.domain || '');
+
       const goal = isScaleLocal
         ? `Qualify prospects for ScaleLocal services using the NEPQ framework. Understand their current situation, surface their pain points, and recommend the right package based on what they tell you. Be a trusted advisor, not a salesperson. Never process transactions. Only capture contact info when they want follow-up or a proposal.`
         : `Help visitors find what they need — fast and without friction. Answer questions from the business information provided. When something is outside your knowledge, be honest and point them toward the right resource. Only capture contact info when a visitor asks to be followed up with or wants to book something.`;
 
       // ScaleLocal gets the qualifying sequence baked into personality
-      const isScaleLocal = isScaleLocalDomain(profile.domain || '');
       if (isScaleLocal) {
         personality += `
 
