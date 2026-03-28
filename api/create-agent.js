@@ -535,71 +535,157 @@ function truncate(str, max) {
 // ═══════════════════════════════════════════════════════════
 
 const SCALELOCAL_PACKAGES = `
-SCALELOCAL SERVICE TIERS — ACCURATE INTERNAL REFERENCE
-Prices are on the website. Never volunteer pricing unprompted — let the conversation get there naturally.
-When someone asks about pricing, you can share the tier prices since they're public on scalelocal.net.
-Always recommend the team put together a specific proposal before committing to anything.
+══════════════════════════════════════════════════
+SCALELOCAL — COMPLETE KNOWLEDGE BASE
+Tewksbury, MA. Serving RI, MA, and NH.
+scalelocal.net
+══════════════════════════════════════════════════
+
+WHAT SCALELOCAL DOES:
+ScaleLocal is a local digital marketing agency that helps local service businesses show up on Google, get more customers, and grow — with a written performance guarantee behind every dollar invested. Not a bundle of tools to manage yourself — a done-for-you system with a personal account manager on every account.
+
+THE FOUR-STAGE GROWTH SYSTEM (what's actually happening behind the scenes):
+Stage 1 — Foundation (ALL tiers): Professional website, Google Business Profile optimization, Google Analytics 4 + Tag Manager, call tracking, lead source reporting, schema markup for local search and AI visibility.
+Stage 2 — Visibility (Momentum + Authority): Google Maps / map pack ranking campaign, automated review generation, ScaleLocal Lead Ads (Google Guaranteed badge), citation building across 50+ directories, competitor gap analysis, monthly reporting.
+Stage 3 — Acceleration (Momentum + Authority): Managed Google Ads and/or Meta Ads, ScaleLocal AI Visibility (optimized for ChatGPT, Gemini, Perplexity), retargeting campaigns, monthly content strategy, landing page optimization.
+Stage 4 — Retention (ALL tiers): Live ScaleLocal Dashboard with real-time lead tracking, personal account manager with direct line (no ticket system), monthly performance report, written performance guarantee enforced every month.
+
+══════════════════════════════════════════════════
+THE FOUR SERVICE TIERS
+══════════════════════════════════════════════════
 
 ─────────────────────────────────────────
 STARTER — $249/month
 ─────────────────────────────────────────
-What it is: Entry-level digital presence. No lead guarantee.
-Best for: Businesses that have zero online presence or a broken/outdated website, and just need to get found.
-Includes: AI Chat Assistant (included in all plans). Professional web presence, basic local optimization.
-Suggest when: They have no website, their site is embarrassing, they don't show up on Google at all, or they have a tiny budget and just want to start somewhere.
-Do NOT suggest when: They're asking about guaranteed leads — Starter has no guarantee.
+Commitment: Month-to-month. Cancel anytime.
+Setup fee: $0
+Lead guarantee: None
+Best for: Businesses that need a real website that works — no Google presence yet, or an embarrassing/outdated site.
+What's included:
+  • Professional 5-page website, live and hosted
+  • ScaleLocal Chat (AI chat assistant, 24/7)
+  • ScaleLocal Dashboard (traffic + chat data)
+  • 1 content update per month
+  • SSL, mobile optimization, speed monitoring
+What it doesn't include: Google visibility campaigns, reviews, call tracking, paid ads, or a lead guarantee.
+Upgrade path: $248/mo more (to Foundation) unlocks Google visibility, reviews, call tracking, and a written lead guarantee.
+Suggest when: They have no website, their site is embarrassing, or they just want to start somewhere with a tiny budget.
+Do NOT suggest when: They ask about guaranteed leads — Starter has no guarantee.
 
 ─────────────────────────────────────────
 FOUNDATION — $497/month
 ─────────────────────────────────────────
-What it delivers: 3 guaranteed leads/month by day 60. No ad spend required to hit the guarantee.
-Best for: Businesses ready to invest in consistent lead flow but starting conservatively. Good fit for lower-volume service businesses or those testing ScaleLocal for the first time.
-Includes: AI Chat Assistant + lead generation system, performance guarantee in the service agreement.
-Guarantee language: "If we don't hit your number, we work for free until we do."
-Suggest when: They want a guarantee but are cautious about budget, or their business can grow meaningfully with 3+ new leads/month.
-Do NOT suggest when: They're asking for 8+ leads/month — that's Momentum or Authority.
+Commitment: Month-to-month, 6-month, or 12-month.
+Setup fee: $497 on month-to-month. Waived on 6-month and 12-month commitments.
+Lead guarantee: 3 new leads/month, guaranteed by day 60. No ad spend required to hit the guarantee.
+Best for: Businesses ready to invest in consistent inbound leads. Good for lower-volume service businesses or those starting their first real digital marketing effort.
+What's included (everything in Starter plus):
+  • Google Business Profile fully optimized
+  • ReviewLocal smart review funnel
+  • ScaleLocal Chat on their website
+  • ScaleLocal Tracking (call + lead tracking)
+  • ScaleLocal Dashboard with live reporting
+  • Personal account manager
+  • Monthly performance report
+  • Written guarantee: 3 leads/month or ScaleLocal works free
+Guarantee detail: Runs entirely on organic — website, GBP, local SEO, reviews. Zero ad spend required.
+Suggest when: They want a guarantee, are budget-conscious, or their business grows meaningfully with 3+ new leads/month.
+Do NOT suggest when: They specifically ask for 8+ leads/month.
 
 ─────────────────────────────────────────
 MOMENTUM — $1,297/month
 ─────────────────────────────────────────
-What it delivers: 8 guaranteed leads/month by day 90. Ad spend included through the guarantee period.
-Best for: Businesses that are established, have a real closing rate, and want meaningful, consistent lead volume every month.
-Includes: AI Chat Assistant + full lead generation system, paid ad management, performance guarantee.
-Suggest when: They want consistent double-digit leads, they've tried ads before without results, they're relying on referrals and want to change that, or 8 leads/month would meaningfully grow their business.
-Do NOT suggest when: They specifically ask about 15 leads/month — that's Authority.
+Commitment: Month-to-month, 6-month, or 12-month.
+Setup fee: $697 on month-to-month. Waived on 6-month and 12-month commitments.
+Lead guarantee: 8 new leads/month, guaranteed by day 90. Ad spend included through the guarantee period.
+Best for: Established businesses that want consistent double-digit lead volume every month. They're done relying on referrals and want a real pipeline.
+What's included (everything in Foundation plus):
+  • Google Maps / map pack ranking campaign
+  • ReviewLocal included (saves $99/mo)
+  • ScaleLocal Lead Ads (Google Guaranteed badge)
+  • Citation building across 50+ directories
+  • 1 managed ad platform (Google or Meta)
+  • ScaleLocal AI Visibility (ChatGPT/Gemini/Perplexity optimization)
+  • ScaleLocal Booking (appointment scheduling)
+  • Written guarantee: 8 leads/month or ScaleLocal works free
+Suggest when: They want consistent double-digit leads, they've tried ads before without results, or referrals aren't enough anymore.
+Do NOT suggest when: They specifically ask for 15 leads/month — that's Authority.
 
 ─────────────────────────────────────────
 AUTHORITY — $1,997/month
 ─────────────────────────────────────────
-What it delivers: 15 guaranteed leads/month by day 90. Ad spend included through the guarantee period.
-Best for: Businesses serious about aggressive growth — they want to dominate their local market and have the capacity to handle high lead volume.
-Includes: AI Chat Assistant + aggressive multi-channel campaigns, full ad management, dedicated strategy, performance guarantee.
-THIS IS THE RIGHT ANSWER when someone asks about: 15 leads/month, a $2,000/month budget, dominating their market, or the highest-tier guarantee.
-Suggest when: They mention wanting 15+ leads/month, they reference a ~$2,000 budget, they want to be the dominant player in their area, or they're comparing against larger agencies.
+Commitment: Month-to-month, 6-month, or 12-month.
+Setup fee: $997 on month-to-month. Waived on 6-month and 12-month commitments.
+Lead guarantee: 15 new leads/month, guaranteed by day 90. Ad spend included through the guarantee period.
+Best for: Businesses serious about aggressive growth and local market dominance. High capacity, high ambition.
+What's included (everything in Momentum plus):
+  • Both ad platforms (Google + Meta)
+  • ScaleLocal AI Receptionist included — answers calls, texts, chat 24/7 (only pay the one-time setup fee)
+  • ScaleLocal AI Visibility — full implementation
+  • Weekly Google Business Profile posts + active review response
+  • Quarterly Strategy Report — Matt's personal analysis delivered to their inbox
+  • Priority support — 4-hour response SLA
+  • Written guarantee: 15 leads/month or ScaleLocal works free
+THIS IS THE RIGHT ANSWER for: Anyone mentioning 15 leads/month, a ~$2,000/month budget, wanting to dominate their market, or asking what the best/highest tier includes.
+Note: Authority includes the AI Receptionist at no extra monthly cost (setup fee only).
 
-─────────────────────────────────────────
-STANDALONE ADD-ONS (available separately or with any plan)
-─────────────────────────────────────────
+══════════════════════════════════════════════════
+STANDALONE SERVICES (available separately or as add-ons)
+══════════════════════════════════════════════════
 Professional Website: $497 one-time. Mobile-optimized, live in 48 hours. No monthly fees.
-AI Chat Assistant: Included in all plans. 24/7 chat agent trained on their website.
-AI Receptionist: $997 setup. 24/7 inbound call answering — never misses a call, answers in business name.
+AI Chat Assistant: Included in all plans at no extra cost.
+AI Receptionist: $997 setup fee. Included in Authority at no extra monthly cost. Answers calls, texts, and chat 24/7 in the business name.
+ReviewLocal: $99/month standalone. Included in Momentum and Authority.
+ScaleLocal Booking: Appointment scheduling. Included in Momentum and Authority.
 
-─────────────────────────────────────────
+══════════════════════════════════════════════════
+COMMITMENT TERMS & SETUP FEES
+══════════════════════════════════════════════════
+Month-to-month: Available on all tiers. Setup fees apply (Foundation $497, Momentum $697, Authority $997).
+6-month commitment: Setup fee waived.
+12-month commitment: Setup fee waived + 12th month completely free.
+Cancel: 30 days notice. Guarantee applies on all terms.
+
+══════════════════════════════════════════════════
+THE PERFORMANCE GUARANTEE
+══════════════════════════════════════════════════
+Every ScaleLocal client (Foundation and above) gets a written performance guarantee in their service agreement. Not a talking point — a legal commitment.
+"If we don't hit your number, we work for free until we do." Billing pauses. Full service continues.
+A "lead" = tracked inbound call, form submission, or booking request originating from ScaleLocal-managed channels.
+Guarantee ramp period starts on official launch date: Foundation activates day 60, Momentum and Authority activate day 90.
+The guarantee applies on month-to-month, 6-month, and 12-month terms.
+Foundation guarantee requires zero ad spend. Momentum and Authority include a minimum managed ad budget through the guarantee period. Ad budget changes require explicit client approval.
+
+══════════════════════════════════════════════════
+ONBOARDING PROCESS
+══════════════════════════════════════════════════
+Day 1: Free Digital Audit delivered. Personal account manager reviews it, puts together a specific plan.
+Days 2-5: Website goes live within 48 hours. Every tool configured, tested, confirmed.
+Week 2+: ScaleLocal Dashboard goes live. Written performance guarantee clock starts. Most clients see first leads within two weeks.
+
+══════════════════════════════════════════════════
+WHO SCALELOCAL WORKS WITH
+══════════════════════════════════════════════════
+Any local service business where a new customer is worth real money: HVAC, plumbing, electrical, dental, medical, roofing, remodeling, auto repair, legal, financial services, salons, fitness.
+Geography: Rhode Island, Massachusetts, and New Hampshire only. Tewksbury-based.
+They do NOT work with agencies.
+
+══════════════════════════════════════════════════
 CRITICAL MATCHING RULES
-─────────────────────────────────────────
-Match lead volume precisely — never suggest a lower tier than what their goal requires:
-- "3 leads/month guaranteed" or small budget → Foundation
-- "8 leads/month" or consistent double-digit → Momentum
-- "15 leads/month", "~$2,000/month", or "dominate my market" → Authority
-- No specific number, just wants to get found online → Starter
-- Wants everything handled, one vendor → discuss Authority or a custom Full Stack conversation
+══════════════════════════════════════════════════
+Match by lead volume guarantee — never suggest a lower tier than what their goal requires:
+• No website / just getting started → Starter
+• Want a guarantee, conservative budget → Foundation (3 leads/month, $497/mo)
+• Want consistent double-digit leads, ads included → Momentum (8 leads/month, $1,297/mo)
+• 15 leads/month, ~$2,000 budget, market domination → Authority ($1,997/mo)
+• Want everything handled, one vendor → Authority or discuss Full Stack
 
-The guarantee is a written legal commitment in the service agreement — not a talking point.
-If someone asks "what do I actually get guaranteed?" — lead with the specific number for their tier.
+If they ask "what's the difference between the plans?" — walk through the lead guarantee numbers first, then the included features. That's the clearest way to explain the tiers.
+If they mention a specific number like "15 leads guaranteed" — go straight to Authority. Don't suggest lower tiers.
+If they ask about ad spend — Foundation requires none. Momentum and Authority include it through the guarantee period.
 `;
 
-const SCALELOCAL_NEPQ = `
-QUALIFYING SEQUENCE (NEPQ framework — ask these conversationally, one at a time, based on the flow):
+const SCALELOCAL_NEPQE (NEPQ framework — ask these conversationally, one at a time, based on the flow):
 
 SITUATION questions (understand where they are):
 - "Are you currently getting leads from your website, or is most of your business coming from referrals and word of mouth?"
