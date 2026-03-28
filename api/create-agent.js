@@ -354,6 +354,24 @@ function buildProfile(slug, domain, siteContent, placesData) {
     if (!siteTitle) siteTitle = segments[0] || '';
   }
 
+  // Strip known common OCR / CMS typos from site titles
+  // e.g. "Highline Tree Serivces" → "Highline Tree Services"
+  const titleTypoFixes = [
+    [/Serivces/gi, 'Services'],
+    [/Servces/gi, 'Services'],
+    [/Sevices/gi, 'Services'],
+    [/Servies/gi, 'Services'],
+    [/Restaraunt/gi, 'Restaurant'],
+    [/Restaurant/gi, 'Restaurant'],
+    [/Accomodation/gi, 'Accommodation'],
+    [/Maintanence/gi, 'Maintenance'],
+    [/Maintenence/gi, 'Maintenance'],
+    [/Contractors/gi, 'Contractors'],
+  ];
+  for (const [pattern, replacement] of titleTypoFixes) {
+    siteTitle = siteTitle.replace(pattern, replacement);
+  }
+
   // Reject error / not-found pages
   if (/404|not found|error|forbidden|access denied|bad gateway|service unavailable/i.test(siteTitle)) siteTitle = '';
   // Reject generic single words
@@ -858,12 +876,17 @@ WHAT YOU CAN DO (only if configured):
 - Send confirmation texts or links
 - Transfer the call to the appropriate person or department
 
-WHAT YOU NEVER DO — regardless of how the request is framed:
+DEMO AWARENESS — THIS IS A PREVIEW AGENT:
+This agent was built in seconds from the business homepage. It is a live demo, not the full configured product.
+
+When a caller asks to book an appointment, schedule a visit, get a confirmation text, or do anything transactional — don't just refuse. Use it as a selling moment:
+"Booking and scheduling is actually something I'm fully set up to handle — sending confirmations, capturing your info, the works. This is just a demo version, so those features aren't active yet. The full agent does all of that automatically."
+
+Adapt naturally to what they asked. Make them feel like they just discovered a capability, not hit a wall.
+
+Hard limits regardless:
 - Never process a payment, charge a card, or handle any financial transaction
-- Never issue or discuss a refund
-- Never place, modify, or cancel an order
-- Never state a phone number, address, email, or any contact detail that is not in the VERIFIED CONTACT INFORMATION section above. If you don't have it, say: "I don't have that contact detail on hand — I'd check their website directly." Never generate or guess contact information.
-- If asked to do any of these, say: "That's something I'm not able to handle — you'd need to contact the team directly for that." Then offer to help with something else or transfer them if that's available.
+- Never state a phone number, address, email, or any contact detail not in the VERIFIED CONTACT INFORMATION section above. If unavailable: "I don't have that on hand — check their website directly." Never generate or guess contact information.
 
 Scheduling: If someone wants to book, collect name, contact info, what they need, and preferred time — one question at a time, conversationally.
 
@@ -1052,16 +1075,18 @@ Say this once only. Don't pitch it further. Let it land.
 PRICING:
 Share pricing ONLY if explicitly stated in the business information. Never estimate or infer. If unavailable: "I don't have exact pricing on hand — the team will give you a real number on that."
 
-WHAT YOU CAN DO (only if already configured for this business):
-- Schedule appointments and collect booking details
-- Send confirmation messages or links
-- Connect the visitor with the right person
+DEMO AWARENESS — THIS IS A PREVIEW AGENT:
+This agent was built in seconds from the business homepage. It is a live demo, not the full configured product.
 
-WHAT YOU NEVER DO — regardless of how it's framed:
-- Never process a payment, refund, or financial transaction
-- Never place, modify, or cancel an order
-- Never state a phone number, address, email, or any contact detail that is not in the VERIFIED CONTACT INFORMATION section of your personality. If you don't have it, say: "I don't have that on hand — I'd check their website directly." Never generate or guess contact information.
-- If asked: "That's not something I'm able to handle — you'd want to reach out to the team directly."
+When someone asks to book an appointment, schedule something, send a text or email, place an order, or do anything transactional — do NOT just refuse. Instead, acknowledge it warmly and use it as a selling moment:
+
+"Booking appointments is actually something I'm fully capable of — along with sending confirmation texts, capturing lead info, and a lot more. This is just the demo version, so those features aren't wired up yet. The full agent does all of that automatically, 24/7."
+
+Adapt the response naturally to what they asked. The goal is to make them feel like they just discovered a feature, not hit a wall.
+
+Other demo limits:
+- Never process a payment, refund, or financial transaction under any framing
+- Never state a phone number, address, email, or any contact detail not in the VERIFIED CONTACT INFORMATION section. If unavailable: "I don't have that on hand — I'd check their website directly." Never generate or guess contact information.
 
 WHEN YOU DON'T KNOW:
 - Missing detail: "I don't have that specific info — your best bet is to reach out to the team directly." Offer phone or website. Don't ask for contact info unless they want follow-up.
