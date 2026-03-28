@@ -1232,75 +1232,42 @@ async function trackDemoOpen(profile) {
         console.error(`[AgentCopy] Note failed ${noteRes.status}:`, noteErr.slice(0, 200));
       }
 
-      // Step 3: Send notification email to Matt via GHL conversations API
-      // First create/get a conversation for this contact, then send an email message
-      try {
-        const convRes = await fetch('https://services.leadconnectorhq.com/conversations/', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({ contactId, locationId }),
-        });
+      // Step 3: Send notification email directly to Matt
+      // Matt's GHL contact ID: eSivffIGs1c6KDVNxNfX — confirmed working via API test
+      const MATT_CONTACT_ID = 'eSivffIGs1c6KDVNxNfX';
+      const emailLines = [
+        `<h2 style="font-family:sans-serif;margin:0 0 20px;">New AgentCopyAI Demo</h2>`,
+        `<table style="border-collapse:collapse;font-family:sans-serif;font-size:14px;width:100%;">`,
+        `<tr><td style="padding:8px 12px;color:#666;width:110px;">Business</td><td style="padding:8px 12px;font-weight:600;">${profile.name}</td></tr>`,
+        `<tr style="background:#f5f5f5;"><td style="padding:8px 12px;color:#666;">Website</td><td style="padding:8px 12px;"><a href="https://${profile.domain}">${profile.domain}</a></td></tr>`,
+        `<tr><td style="padding:8px 12px;color:#666;">Demo</td><td style="padding:8px 12px;"><a href="${demoUrl}">${demoUrl}</a></td></tr>`,
+        profile.phone ? `<tr style="background:#f5f5f5;"><td style="padding:8px 12px;color:#666;">Phone</td><td style="padding:8px 12px;">${profile.phone}</td></tr>` : '',
+        profile.address ? `<tr><td style="padding:8px 12px;color:#666;">Address</td><td style="padding:8px 12px;">${profile.address}</td></tr>` : '',
+        profile.hours ? `<tr style="background:#f5f5f5;"><td style="padding:8px 12px;color:#666;">Hours</td><td style="padding:8px 12px;">${profile.hours}</td></tr>` : '',
+        profile.rating ? `<tr><td style="padding:8px 12px;color:#666;">Rating</td><td style="padding:8px 12px;">${profile.rating} ★ (${profile.reviewCount} reviews)</td></tr>` : '',
+        `<tr style="background:#f5f5f5;"><td style="padding:8px 12px;color:#666;">Time</td><td style="padding:8px 12px;">${timestamp}</td></tr>`,
+        `</table>`,
+      ].filter(Boolean).join('');
 
-        let conversationId = null;
-        if (convRes.ok) {
-          const convData = await convRes.json();
-          conversationId = convData.conversation?.id || convData.id;
-        } else {
-          // Try to get existing conversation
-          const getConvRes = await fetch(
-            `https://services.leadconnectorhq.com/conversations/search?contactId=${contactId}&locationId=${locationId}`,
-            { headers }
-          );
-          if (getConvRes.ok) {
-            const getConvData = await getConvRes.json();
-            conversationId = getConvData.conversations?.[0]?.id;
-          }
-        }
+      const emailRes = await fetch('https://services.leadconnectorhq.com/conversations/messages', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          type: 'Email',
+          contactId: MATT_CONTACT_ID,
+          emailFrom: 'alex@scalelocal.net',
+          emailReplyTo: 'alex@scalelocal.net',
+          emailSubject: `New AgentCopyAI Demo — ${profile.name}`,
+          html: emailLines,
+          message: `New demo: ${profile.name} | ${profile.domain} | ${demoUrl} | ${timestamp}`,
+        }),
+      });
 
-        if (conversationId) {
-          const emailBody = [
-            `New AgentCopyAI demo just ran.`,
-            ``,
-            `Business: ${profile.name}`,
-            `Website: https://${profile.domain}`,
-            `Demo Link: ${demoUrl}`,
-            ``,
-            profile.address ? `Address: ${profile.address}` : null,
-            profile.phone ? `Phone: ${profile.phone}` : null,
-            profile.hours ? `Hours: ${profile.hours}` : null,
-            profile.rating ? `Rating: ${profile.rating} stars (${profile.reviewCount} Google reviews)` : null,
-            ``,
-            `Time: ${timestamp}`,
-            ``,
-            `— AgentCopyAI`,
-          ].filter(l => l !== null).join('
-');
-
-          const msgRes = await fetch('https://services.leadconnectorhq.com/conversations/messages', {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({
-              type: 'Email',
-              conversationId,
-              contactId,
-              emailFrom: 'alex@scalelocal.net',
-              emailTo: 'matt@scalelocal.net',
-              subject: `New Demo: ${profile.name} — ${profile.domain}`,
-              body: emailBody,
-            }),
-          });
-
-          if (msgRes.ok) {
-            console.log(`[AgentCopy] Notification email sent to matt@scalelocal.net`);
-          } else {
-            const msgErr = await msgRes.text();
-            console.error(`[AgentCopy] Email send failed ${msgRes.status}:`, msgErr.slice(0, 300));
-          }
-        } else {
-          console.error('[AgentCopy] Could not get conversation ID for email send');
-        }
-      } catch (emailErr) {
-        console.error('[AgentCopy] Email notification error:', emailErr.message);
+      if (emailRes.ok) {
+        console.log(`[AgentCopy] Notification email queued for matt@scalelocal.net — ${profile.name}`);
+      } else {
+        const emailErr = await emailRes.text();
+        console.error(`[AgentCopy] Email failed ${emailRes.status}:`, emailErr.slice(0, 200));
       }
     }
 
