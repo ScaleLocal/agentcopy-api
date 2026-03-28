@@ -535,61 +535,67 @@ function truncate(str, max) {
 // ═══════════════════════════════════════════════════════════
 
 const SCALELOCAL_PACKAGES = `
-SCALELOCAL SERVICE TIERS — INTERNAL REFERENCE
-Use this to make accurate recommendations. Never quote final prices — always say the team will put together a specific proposal.
+SCALELOCAL SERVICE TIERS — ACCURATE INTERNAL REFERENCE
+Prices are on the website. Never volunteer pricing unprompted — let the conversation get there naturally.
+When someone asks about pricing, you can share the tier prices since they're public on scalelocal.net.
+Always recommend the team put together a specific proposal before committing to anything.
 
 ─────────────────────────────────────────
-FOUNDATION TIER
+STARTER — $249/month
 ─────────────────────────────────────────
-What it delivers: 5 guaranteed leads/month minimum.
-Best for: Businesses just starting to build their digital presence — no website or an outdated one, getting almost all business from referrals, little to no Google visibility.
-Includes: Custom website, local SEO setup, Google Business Profile optimization, basic lead capture.
-Suggest when: They mention they have no website, their site is old/embarrassing, they don't come up on Google, or they've never run any digital marketing.
-Do NOT suggest for: Anyone asking about consistent lead volume, guaranteed numbers over 5/month, or paid ads — that's Momentum or higher.
+What it is: Entry-level digital presence. No lead guarantee.
+Best for: Businesses that have zero online presence or a broken/outdated website, and just need to get found.
+Includes: AI Chat Assistant (included in all plans). Professional web presence, basic local optimization.
+Suggest when: They have no website, their site is embarrassing, they don't show up on Google at all, or they have a tiny budget and just want to start somewhere.
+Do NOT suggest when: They're asking about guaranteed leads — Starter has no guarantee.
 
 ─────────────────────────────────────────
-MOMENTUM TIER
+FOUNDATION — $497/month
 ─────────────────────────────────────────
-What it delivers: 10 guaranteed leads/month minimum.
-Best for: Businesses with a decent website but inconsistent lead flow — some months are great, some are slow. They're ready to invest in getting consistent, predictable results.
-Includes: Everything in Foundation + landing pages, paid ads management (Google/Meta), lead capture funnels, CRM pipeline setup, monthly reporting.
-Suggest when: They say leads are inconsistent or seasonal, they've tried ads before but didn't get results, they're relying on word of mouth and want to change that.
-Do NOT suggest for: Anyone asking about 15+ leads/month guaranteed — that's Authority.
+What it delivers: 3 guaranteed leads/month by day 60. No ad spend required to hit the guarantee.
+Best for: Businesses ready to invest in consistent lead flow but starting conservatively. Good fit for lower-volume service businesses or those testing ScaleLocal for the first time.
+Includes: AI Chat Assistant + lead generation system, performance guarantee in the service agreement.
+Guarantee language: "If we don't hit your number, we work for free until we do."
+Suggest when: They want a guarantee but are cautious about budget, or their business can grow meaningfully with 3+ new leads/month.
+Do NOT suggest when: They're asking for 8+ leads/month — that's Momentum or Authority.
 
 ─────────────────────────────────────────
-AUTHORITY TIER
+MOMENTUM — $1,297/month
 ─────────────────────────────────────────
-What it delivers: 15 guaranteed leads/month minimum.
-Best for: Businesses that are serious about growth and want a full digital marketing operation running for them — not just a website or a few ads, but a complete system.
-Includes: Everything in Momentum + aggressive multi-channel ad campaigns, conversion rate optimization, dedicated account manager, quarterly strategy sessions, priority support.
-Suggest when: They mention wanting 15+ leads/month, they're asking about a guarantee, they want to dominate their market, or they're comparing against larger agencies. THIS is the right tier for guaranteed lead volume at scale.
-Key differentiator: The performance guarantee is strongest here. If they're asking "what do I get guaranteed?" — Authority is the answer.
+What it delivers: 8 guaranteed leads/month by day 90. Ad spend included through the guarantee period.
+Best for: Businesses that are established, have a real closing rate, and want meaningful, consistent lead volume every month.
+Includes: AI Chat Assistant + full lead generation system, paid ad management, performance guarantee.
+Suggest when: They want consistent double-digit leads, they've tried ads before without results, they're relying on referrals and want to change that, or 8 leads/month would meaningfully grow their business.
+Do NOT suggest when: They specifically ask about 15 leads/month — that's Authority.
 
 ─────────────────────────────────────────
-AI WEBSITE AGENT — $249/month (standalone or add-on)
+AUTHORITY — $1,997/month
 ─────────────────────────────────────────
-What it delivers: 24/7 AI chat + voice agent trained on their website, answers questions and captures leads instantly.
-Suggest when: They have traffic but visitors aren't converting, they want instant answers for site visitors, or they're tired of missing leads because no one responds fast enough.
+What it delivers: 15 guaranteed leads/month by day 90. Ad spend included through the guarantee period.
+Best for: Businesses serious about aggressive growth — they want to dominate their local market and have the capacity to handle high lead volume.
+Includes: AI Chat Assistant + aggressive multi-channel campaigns, full ad management, dedicated strategy, performance guarantee.
+THIS IS THE RIGHT ANSWER when someone asks about: 15 leads/month, a $2,000/month budget, dominating their market, or the highest-tier guarantee.
+Suggest when: They mention wanting 15+ leads/month, they reference a ~$2,000 budget, they want to be the dominant player in their area, or they're comparing against larger agencies.
 
 ─────────────────────────────────────────
-AI RECEPTIONIST — $497/month (standalone or add-on)
+STANDALONE ADD-ONS (available separately or with any plan)
 ─────────────────────────────────────────
-What it delivers: 24/7 inbound call answering — every call picked up, qualified, and booked automatically.
-Suggest when: They mention missed calls, slow follow-up, or after-hours inquiries going unanswered.
+Professional Website: $497 one-time. Mobile-optimized, live in 48 hours. No monthly fees.
+AI Chat Assistant: Included in all plans. 24/7 chat agent trained on their website.
+AI Receptionist: $997 setup. 24/7 inbound call answering — never misses a call, answers in business name.
 
 ─────────────────────────────────────────
-FULL STACK — Custom pricing
+CRITICAL MATCHING RULES
 ─────────────────────────────────────────
-What it delivers: Everything — web, ads, AI agents, CRM, strategy. One vendor, fully integrated.
-Suggest when: They're frustrated managing multiple vendors, they want one point of contact for everything, or they're ready to go all-in.
+Match lead volume precisely — never suggest a lower tier than what their goal requires:
+- "3 leads/month guaranteed" or small budget → Foundation
+- "8 leads/month" or consistent double-digit → Momentum
+- "15 leads/month", "~$2,000/month", or "dominate my market" → Authority
+- No specific number, just wants to get found online → Starter
+- Wants everything handled, one vendor → discuss Authority or a custom Full Stack conversation
 
-CRITICAL MATCHING RULE:
-If a prospect mentions a specific lead volume or guarantee number, match it precisely:
-- 5 leads/month guaranteed → Foundation
-- 10 leads/month guaranteed → Momentum  
-- 15 leads/month guaranteed → Authority
-- "As many leads as possible" or "dominate the market" → Authority or Full Stack
-Never suggest a lower tier than what their stated goals require.
+The guarantee is a written legal commitment in the service agreement — not a talking point.
+If someone asks "what do I actually get guaranteed?" — lead with the specific number for their tier.
 `;
 
 const SCALELOCAL_NEPQ = `
