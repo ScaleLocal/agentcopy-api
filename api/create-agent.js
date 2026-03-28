@@ -1149,31 +1149,81 @@ async function trackDemoOpen(profile) {
   const locationId = process.env.GHL_LOCATION_ID;
   if (!token || !locationId) return;
 
+  // Build the demo URL from the domain
+  const slug = profile.domain
+    .replace(/\.com$/, '')
+    .replace(/\.(net|org|co|io|biz|us|info|dev|ai|app)$/, '-$1')
+    .replace(/\./g, '-');
+  const demoUrl = `https://agentcopyai.com/site-agent/${slug}`;
+  const timestamp = new Date().toLocaleString('en-US', {
+    timeZone: 'America/New_York', dateStyle: 'medium', timeStyle: 'short'
+  });
+
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`,
+    'Version': '2021-07-28',
+  };
+
   try {
-    // Create or find a contact for this business demo
-    const response = await fetch('https://services.leadconnectorhq.com/contacts/', {
+    // Step 1: Create contact tagged for Beta section
+    // Tag 'agentcopy-demo-beta' keeps demos separate from real CRM leads
+    // and triggers the GHL notification workflow to email matt@scalelocal.net
+    const contactRes = await fetch('https://services.leadconnectorhq.com/contacts/', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-        'Version': '2021-07-28',
-      },
+      headers,
       body: JSON.stringify({
         locationId,
         name: profile.name,
         companyName: profile.name,
         website: `https://${profile.domain}`,
-        address1: profile.address,
-        phone: profile.phone,
+        address1: profile.address || '',
+        phone: profile.phone || '',
         source: 'AgentCopyAI Demo',
-        tags: ['demo-opened', 'agentcopy'],
+        tags: ['agentcopy-demo-beta', 'demo-opened'],
       }),
     });
 
-    if (response.ok) {
-      const data = await response.json();
-      console.log(`[AgentCopy] Contact created/updated: ${data.contact?.id}`);
+    let contactId = null;
+    if (contactRes.ok) {
+      const contactData = await contactRes.json();
+      contactId = contactData.contact?.id;
+      console.log(`[AgentCopy] Beta contact created: ${contactId} — ${profile.name}`);
+    } else {
+      const errText = await contactRes.text();
+      console.error(`[AgentCopy] Contact create failed ${contactRes.status}:`, errText.slice(0, 200));
     }
+
+    // Step 2: Add a detailed note so Matt sees everything in one place
+    if (contactId) {
+      const lines = [
+        `AgentCopyAI Demo — ${timestamp}`,
+        ``,
+        `Business: ${profile.name}`,
+        `Website: https://${profile.domain}`,
+        `Demo Link: ${demoUrl}`,
+        ``,
+      ];
+      if (profile.address) lines.push(`Address: ${profile.address}`);
+      if (profile.phone) lines.push(`Phone: ${profile.phone}`);
+      if (profile.hours) lines.push(`Hours: ${profile.hours}`);
+      if (profile.rating) lines.push(`Google Rating: ${profile.rating} (${profile.reviewCount} reviews)`);
+      lines.push(``, `Sent automatically by AgentCopyAI`);
+
+      const noteRes = await fetch(`https://services.leadconnectorhq.com/contacts/${contactId}/notes`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ body: lines.join('\n') }),
+      });
+
+      if (noteRes.ok) {
+        console.log(`[AgentCopy] Note added to contact ${contactId}`);
+      } else {
+        const noteErr = await noteRes.text();
+        console.error(`[AgentCopy] Note failed ${noteRes.status}:`, noteErr.slice(0, 200));
+      }
+    }
+
   } catch (err) {
     console.error('[AgentCopy] Track demo open error:', err.message);
   }
