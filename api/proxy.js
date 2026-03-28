@@ -115,6 +115,58 @@ export default async function handler(req, res) {
   } catch(e) {}
 })();
 
+// Fix 0: Pre-accept all known consent cookies so popups never fire
+// Injected before any page scripts run
+document.cookie = 'terms_accepted=true; max-age=31536000; path=/; samesite=lax';
+document.cookie = 'moove_gdpr_popup={"strict":1,"thirdparty":1,"advanced":1}; max-age=31536000; path=/; samesite=lax';
+document.cookie = 'cookielawinfo-checkbox-necessary=yes; max-age=31536000; path=/; samesite=lax';
+document.cookie = 'cookielawinfo-checkbox-analytics=yes; max-age=31536000; path=/; samesite=lax';
+document.cookie = 'cookielawinfo-checkbox-functional=yes; max-age=31536000; path=/; samesite=lax';
+document.cookie = 'CookieConsent=true; max-age=31536000; path=/; samesite=lax';
+document.cookie = 'cookie_consent=accepted; max-age=31536000; path=/; samesite=lax';
+document.cookie = 'gdpr_cookie_accepted=true; max-age=31536000; path=/; samesite=lax';
+
+// Fix 0b: Kill popup/modal templates and overlay elements ASAP via DOM manipulation
+// Runs before DOMContentLoaded so popups never get cloned/shown
+(function killPopupsEarly() {
+  function removePopups() {
+    // Kill terms popup template so it can never be cloned
+    var templates = document.querySelectorAll('#terms-popup-template, #terms-popup, .modal-terms, .popup-overlay, .popup-content');
+    templates.forEach(function(el) { el.remove(); });
+    // Kill any visible modal/popup overlays
+    var modals = document.querySelectorAll('.modal-open, [class*="popup"], [class*="modal-terms"], [id*="terms-popup"]');
+    modals.forEach(function(el) {
+      if (el.tagName !== 'BODY') el.remove();
+    });
+    document.body && document.body.classList.remove('modal-open');
+  }
+  // Run immediately
+  removePopups();
+  // Run again after scripts fire (terms popup has 500ms delay)
+  setTimeout(removePopups, 100);
+  setTimeout(removePopups, 600);
+  setTimeout(removePopups, 1200);
+  // MutationObserver to catch dynamically appended popups
+  var obs = new MutationObserver(function(mutations) {
+    mutations.forEach(function(m) {
+      m.addedNodes.forEach(function(node) {
+        if (node.nodeType === 1) {
+          var id = node.id || '';
+          var cls = (node.className || '').toString();
+          if (id.indexOf('terms') > -1 || id.indexOf('popup') > -1 || id.indexOf('modal') > -1 ||
+              cls.indexOf('modal-terms') > -1 || cls.indexOf('popup') > -1) {
+            node.remove();
+          }
+        }
+      });
+    });
+  });
+  document.addEventListener('DOMContentLoaded', function() {
+    obs.observe(document.body, { childList: true, subtree: true });
+    removePopups();
+  });
+})();
+
 // Fix 2: Block ALL navigation inside this demo iframe.
 // This is a display-only demo — no clicks should navigate away.
 // Covers: <a> links, <button> clicks that trigger location changes,
