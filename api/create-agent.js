@@ -956,8 +956,10 @@ async function createGHLAgent(profile, systemPrompt) {
   // Voice AI requires a token with voice scope.
   // GHL_VOICE_TOKEN = old integration token that has voice scope
   // Falls back to hardcoded old token so voice works even if env var not set
-  const voiceToken = process.env.GHL_VOICE_TOKEN 
-    || 'pit-bf711a7a-32d5-474d-8410-15d4be5cde57';
+  // Env-only — no hardcoded fallback. The previously-hardcoded PIT was leaked in this
+  // repo's git history and MUST be revoked at the GHL agency settings → Private Integrations.
+  // Current value lives in API_Keys.md → GHL — AgentCopyAI Voice Fallback Token.
+  const voiceToken = process.env.GHL_VOICE_TOKEN;
   const locationId = process.env.GHL_LOCATION_ID;
   const voiceAgentId = process.env.GHL_VOICE_AGENT_ID;
   const chatBotId = process.env.GHL_CHAT_BOT_ID;

@@ -1,6 +1,8 @@
 // AgentCopyAI — Checkout router
-// POST /api/checkout  { plan: 'm2m'|'6mo'|'12mo' }
-// Returns the correct Stripe Payment Link URL
+// POST /api/checkout  { plan: 'talking-website' | 'talking-website-scheduling' }
+// (Legacy aliases supported: 'm2m', '6mo', '12mo' → all route to $19 talking-website
+//  since the old 3-tier $249/mo model has been deprecated as of 2026-06-25.)
+// Returns the correct Stripe Payment Link URL.
 
 export default async function handler(req, res) {
   const allowedOrigin = process.env.ALLOWED_ORIGIN || 'https://agentcopyai.com';
@@ -12,16 +14,20 @@ export default async function handler(req, res) {
 
   const { plan } = req.body || {};
 
-  // Stripe Payment Links — ScaleLocal / AgentCopyAI
-  // All collect: name, email, phone, company name, website URL
+  // Stripe Payment Links — AgentCopyAI ($19 / $29 tier model, locked 2026-06-25)
+  // Both collect at checkout: name, email, phone, billing address, business_name,
+  // website_url, industry_trade. Apple Pay / Google Pay enabled. Promo codes allowed.
   const links = {
-    m2m:  'https://buy.stripe.com/8x2bJ25p9dQ38N69kh3Je07', // $249 setup (One-Time Setup Fee) + $249/mo (AI Website Agent) M2M
-    '6mo':'https://buy.stripe.com/eVq4gAg3N3bp4wQdAx3Je05', // $249/mo · 6-month · no setup
-    '12mo':'https://buy.stripe.com/fZu8wQ2cX7rF4wQaol3Je06', // $249/mo · 12-month · month 12 free
+    'talking-website':            'https://buy.stripe.com/bJeaEY7xh4fte7qcwt3Je0M', // $19/mo recurring
+    'talking-website-scheduling': 'https://buy.stripe.com/aFa9AUaJth2fd3mbsp3Je0N', // $29/mo recurring
+    // Legacy aliases — anything still calling with the old plan codes routes to $19 base tier.
+    'm2m':  'https://buy.stripe.com/bJeaEY7xh4fte7qcwt3Je0M',
+    '6mo':  'https://buy.stripe.com/bJeaEY7xh4fte7qcwt3Je0M',
+    '12mo': 'https://buy.stripe.com/bJeaEY7xh4fte7qcwt3Je0M',
   };
 
   const url = links[plan];
-  if (!url) return res.status(400).json({ error: 'Invalid plan. Use: m2m, 6mo, or 12mo' });
+  if (!url) return res.status(400).json({ error: 'Invalid plan. Use: talking-website OR talking-website-scheduling' });
 
   return res.status(200).json({ url });
 }

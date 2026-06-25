@@ -19,9 +19,14 @@ const STAGE_CANCELLED = '469efc86-1a39-464b-8d49-16a1c3edcee5'; // Hot Lead → 
 
 // Plan display names
 const PLAN_NAMES = {
-  'm2m':  'Month-to-Month ($249/mo + $249 setup)',
-  '6mo':  '6-Month Commitment ($249/mo · No setup fee)',
-  '12mo': '12-Month Commitment ($249/mo · No setup fee · Month 12 free)',
+  // Current $19/$29 tier model (locked 2026-06-25). Keyed by Stripe metadata.product.
+  'talking_website':            'Talking Website ($19/mo)',
+  'talking_website_scheduling': 'Talking Website + Scheduling ($29/mo)',
+  // Legacy aliases — kept so any in-flight events from old links don't crash.
+  // If we see one of these, a stale link is still in use.
+  'm2m':  'Talking Website ($19/mo) [legacy m2m alias]',
+  '6mo':  'Talking Website ($19/mo) [legacy 6mo alias]',
+  '12mo': 'Talking Website ($19/mo) [legacy 12mo alias]',
 };
 
 // ── Stripe signature verification ─────────────────────────────────────────────
@@ -102,7 +107,7 @@ async function createOrUpdateContact({ firstName, lastName, email, phone, compan
 async function createOpportunity(contactId, { company, plan, amount, stripeCustomerId }) {
   const planName = PLAN_NAMES[plan] || plan;
   return ghlRequest('POST', '/opportunities/', {
-    locationId: PIPELINE_ID,
+    locationId: GHL_LOCATION,
     pipelineId: PIPELINE_ID,
     pipelineStageId: STAGE_PAID,
     contactId,
@@ -124,14 +129,14 @@ async function addNote(contactId, message) {
   });
 }
 
-async function sendInternalNotification(contactId, { name, company, plan, phone, email, website }) {
+async function sendInternalNotification(contactId, { name, company, plan, phone, email, website, industry }) {
   // Create a task in GHL assigned to the location so Matt sees it
   const planName = PLAN_NAMES[plan] || plan;
   const dueDate = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours from now
 
   return ghlRequest('POST', `/contacts/${contactId}/tasks`, {
-    title: `🚀 NEW AI AGENT SIGNUP — Call ${company} within 24 hours`,
-    body: `New customer details:\n\nName: ${name}\nCompany: ${company}\nEmail: ${email}\nPhone: ${phone}\nWebsite: ${website}\nPlan: ${planName}\n\nAction: Call to confirm details and schedule agent installation.\nPromised: Live within 24 business hours.`,
+    title: `🚀 NEW AGENTCOPYAI SIGNUP — Provision ${company} within 24 hours`,
+    body: `New customer details:\n\nName: ${name}\nCompany: ${company}\nEmail: ${email}\nPhone: ${phone}\nWebsite: ${website}\nIndustry: ${industry || 'not provided'}\nPlan: ${planName}\n\nAction: Verify auto-provisioned sub-account, custom widget config, and welcome email sent.\nPromised: Embed snippet delivered within 24 hours via email.`,
     dueDate,
     completed: false,
     assignedTo: null, // defaults to location owner (Matt)
@@ -171,7 +176,7 @@ async function sendWelcomeEmail(contactId, { name, company, plan, email }) {
           </div>
           <div style="display: flex; gap: 12px; margin-bottom: 14px; align-items: flex-start;">
             <div style="width: 28px; height: 28px; border-radius: 50%; background: #EFF6FF; border: 1px solid #BFDBFE; text-align: center; line-height: 28px; font-size: 13px; flex-shrink: 0;">📞</div>
-            <div><strong>We'll call you within 24 business hours</strong> to confirm your details and coordinate installation — no tech work needed on your end</div>
+            <div><strong>You'll get an email within 24 hours</strong> with your custom widget snippet — paste it onto your site and you're live (we can install it for you if you'd rather; just reply)</div>
           </div>
           <div style="display: flex; gap: 12px; margin-bottom: 14px; align-items: flex-start;">
             <div style="width: 28px; height: 28px; border-radius: 50%; background: #EFF6FF; border: 1px solid #BFDBFE; text-align: center; line-height: 28px; font-size: 13px; flex-shrink: 0;">🤖</div>
@@ -247,10 +252,13 @@ export default async function handler(req, res) {
 
       const email   = customerDetails.email || '';
       const phone   = customerDetails.phone || '';
-      const company = customFields.find(f => f.key === 'company_name')?.text?.value || '';
-      const website = customFields.find(f => f.key === 'website_url')?.text?.value || '';
-      const plan    = session.metadata?.plan || 'm2m';
-      const amount  = (session.amount_total || 24900) / 100;
+      const company  = customFields.find(f => f.key === 'business_name')?.text?.value
+                    || customFields.find(f => f.key === 'company_name')?.text?.value
+                    || '';
+      const website  = customFields.find(f => f.key === 'website_url')?.text?.value || '';
+      const industry = customFields.find(f => f.key === 'industry_trade')?.text?.value || '';
+      const plan    = session.metadata?.product || session.metadata?.plan || 'talking_website';
+      const amount  = (session.amount_total || 1900) / 100; // Fallback default = $19 (new base tier)
       const stripeCustomerId = session.customer || '';
 
       console.log(`[Webhook] New signup: ${fullName} / ${company} / ${plan}`);
@@ -282,13 +290,13 @@ export default async function handler(req, res) {
         `Website: ${website}`,
         `Stripe Customer ID: ${stripeCustomerId}`,
         ``,
-        `Action required: Call within 24 business hours to coordinate agent installation.`,
+        `Action required: Verify auto-provisioned sub-account and confirm welcome email landed within 24 hours.`,
         `Source: AgentCopyAI`,
       ].join('\n'));
 
       // 4. Create task for Matt — due in 24 hours
       await sendInternalNotification(contactId, {
-        name: fullName, company, plan, phone, email, website,
+        name: fullName, company, plan, phone, email, website, industry,
       });
 
       // 5. Send branded welcome email from Alex
