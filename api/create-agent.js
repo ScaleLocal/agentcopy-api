@@ -54,18 +54,50 @@ export default async function handler(req, res) {
           ],
         }),
       });
-      // 200/201 = created, 422 = duplicate (already exists, treat as success)
-      if (ghlRes.ok || ghlRes.status === 422) {
-        let contactId = null;
-        try {
-          const data = await ghlRes.json();
-          contactId = data?.contact?.id || data?.meta?.contactId || null;
-        } catch { /* parsing optional */ }
-        console.log(`[AgentCopy] Signup contact ${ghlRes.status === 422 ? 'matched (existing)' : 'created'}: ${signupData.email} (${signupData.plan})`);
-        return res.status(200).json({ ok: true, contactId });
+      // GHL success paths:
+      // - 200/201: contact created
+      // - 422: GHL's old duplicate response, meta.contactId is the match
+      // - 400 with body.meta.contactId: GHL's "location does not allow duplicated contacts"
+      //   response when location-level dedup is on. Same outcome as 422 — return that ID.
+      let bodyText = '';
+      let bodyJson = null;
+      try {
+        bodyText = await ghlRes.text();
+        bodyJson = bodyText ? JSON.parse(bodyText) : null;
+      } catch { /* keep raw text */ }
+
+      const dupContactId = bodyJson?.meta?.contactId || bodyJson?.contactId || null;
+      const isDuplicate = ghlRes.status === 422 || (ghlRes.status === 400 && dupContactId);
+
+      if (ghlRes.ok || isDuplicate) {
+        const contactId = bodyJson?.contact?.id || bodyJson?.id || dupContactId || null;
+        const verb = ghlRes.ok ? 'created' : 'matched (existing duplicate)';
+        console.log(`[AgentCopy] Signup contact ${verb}: ${signupData.email} (${signupData.plan}) -> ${contactId}`);
+
+        // For duplicates, also update tags + plan_selected so we don't lose the new
+        // signup signal (a returning visitor who picked a different plan, etc).
+        if (isDuplicate && contactId) {
+          try {
+            await fetch(`https://services.leadconnectorhq.com/contacts/${contactId}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.GHL_TOKEN}`,
+                'Version': '2021-07-28',
+              },
+              body: JSON.stringify({
+                tags: ['signup', 'agentcopy', signupData.plan || 'unknown-plan', 'returning-signup'],
+                customFields: [{ key: 'plan_selected', field_value: signupData.plan || '' }],
+              }),
+            });
+          } catch (err) {
+            console.error('[AgentCopy] Signup dup-update failed:', err.message);
+          }
+        }
+        return res.status(200).json({ ok: true, contactId, duplicate: !!isDuplicate });
       }
-      const errText = await ghlRes.text().catch(() => '');
-      console.error(`[AgentCopy] Signup GHL ${ghlRes.status}:`, errText.slice(0, 200));
+
+      console.error(`[AgentCopy] Signup GHL ${ghlRes.status}:`, bodyText.slice(0, 200));
       return res.status(502).json({ ok: false, error: 'crm_error', status: ghlRes.status });
     } catch (err) {
       console.error('[AgentCopy] Signup contact error:', err.message);
