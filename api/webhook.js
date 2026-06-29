@@ -308,23 +308,69 @@ export default async function handler(req, res) {
     }
 
     // ── customer.subscription.deleted → cancellation ─────────────────────────
+    // Retag contact from paid-customer -> churned, add note, create task for Matt.
+    // Stripe customer ID is stored in the contact's customField 'stripe_customer_id'
+    // (set by createOrUpdateContact on checkout.session.completed).
     if (event.type === 'customer.subscription.deleted') {
       const sub = event.data.object;
       const stripeCustomerId = sub.customer;
-
-      // Find contact by Stripe customer ID tag/note — search by metadata
-      // GHL doesn't have a direct Stripe ID lookup, so we search broadly
-      // and match — this is best-effort
       console.log(`[Webhook] Subscription cancelled for Stripe customer: ${stripeCustomerId}`);
-      // Future: query contacts with stripe_customer_id custom field
-      // For now, log for manual follow-up
+
+      const contact = await findContactByStripeId(stripeCustomerId);
+      if (contact?.id) {
+        await retagContact(contact.id, contact.tags || [], {
+          remove: ['paid-customer', 'active-customer'],
+          add: ['churned', 'cancelled-subscription'],
+        });
+        await addNote(contact.id, [
+          `🔴 SUBSCRIPTION CANCELLED — ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })}`,
+          ``,
+          `Stripe customer: ${stripeCustomerId}`,
+          `Subscription ID: ${sub.id}`,
+          `Cancelled at: ${sub.canceled_at ? new Date(sub.canceled_at * 1000).toISOString() : 'unknown'}`,
+          `Cancellation reason: ${sub.cancellation_details?.reason || 'not specified'}`,
+          ``,
+          `Action: send win-back sequence in 30 days.`,
+        ].join('\n'));
+        await createCancellationTask(contact.id, { stripeCustomerId, sub });
+        console.log(`[Webhook] ✓ Cancellation handled for contact ${contact.id}`);
+      } else {
+        console.error(`[Webhook] Cancellation: contact not found for Stripe customer ${stripeCustomerId}`);
+      }
     }
 
     // ── invoice.payment_failed → at risk ─────────────────────────────────────
+    // Tag contact at-risk, add note with retry details, create urgent task for Matt.
     if (event.type === 'invoice.payment_failed') {
       const invoice = event.data.object;
-      console.log(`[Webhook] Payment failed for customer: ${invoice.customer}`);
-      // Future: move opportunity to "At Risk" stage, create task
+      const stripeCustomerId = invoice.customer;
+      console.log(`[Webhook] Payment failed for customer: ${stripeCustomerId}`);
+
+      const contact = await findContactByStripeId(stripeCustomerId);
+      if (contact?.id) {
+        await retagContact(contact.id, contact.tags || [], {
+          add: ['at-risk', 'payment-failed'],
+        });
+        const attemptCount = invoice.attempt_count || 1;
+        const nextAttempt = invoice.next_payment_attempt
+          ? new Date(invoice.next_payment_attempt * 1000).toISOString()
+          : 'no retry scheduled';
+        await addNote(contact.id, [
+          `⚠️ PAYMENT FAILED — ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })}`,
+          ``,
+          `Stripe customer: ${stripeCustomerId}`,
+          `Invoice: ${invoice.id}`,
+          `Amount: $${(invoice.amount_due || 0) / 100}`,
+          `Attempt count: ${attemptCount}`,
+          `Next retry: ${nextAttempt}`,
+          ``,
+          `Action: reach out before Stripe gives up retrying (typically 4 attempts over 2 weeks).`,
+        ].join('\n'));
+        await createPaymentFailureTask(contact.id, { stripeCustomerId, invoice });
+        console.log(`[Webhook] ✓ Payment-failure handled for contact ${contact.id}`);
+      } else {
+        console.error(`[Webhook] Payment failed: contact not found for Stripe customer ${stripeCustomerId}`);
+      }
     }
 
   } catch (err) {
@@ -335,3 +381,105 @@ export default async function handler(req, res) {
 
   return res.status(200).json({ received: true });
 }
+
+// ── Helpers for cancellation + payment-failure handlers ────────────────────
+// Search contacts by Stripe customer ID. We stored stripe_customer_id as a
+// customField on the contact during checkout.session.completed. GHL's query
+// search matches custom-field values in addition to name/email/phone.
+async function findContactByStripeId(stripeCustomerId) {
+  if (!stripeCustomerId) return null;
+  try {
+    const res = await fetch(`https://services.leadconnectorhq.com/contacts/?locationId=${GHL_LOCATION}&query=${encodeURIComponent(stripeCustomerId)}&limit=5`, {
+      headers: {
+        'Authorization': `Bearer ${GHL_TOKEN}`,
+        'Version': '2021-07-28',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) {
+      console.error(`[Webhook] findContactByStripeId ${res.status}`);
+      return null;
+    }
+    const data = await res.json();
+    const contacts = data.contacts || [];
+    // Prefer match where customField actually contains the stripe ID
+    const exact = contacts.find(c =>
+      (c.customFields || []).some(f =>
+        (f.value === stripeCustomerId || f.field_value === stripeCustomerId) &&
+        (f.key === 'stripe_customer_id' || f.name === 'stripe_customer_id')
+      )
+    );
+    return exact || contacts[0] || null;
+  } catch (err) {
+    console.error('[Webhook] findContactByStripeId error:', err.message);
+    return null;
+  }
+}
+
+// Atomically add/remove tags. We GET current tags, mutate, PUT the new set
+// because GHL's tag endpoint doesn't atomically merge-and-remove in one call.
+async function retagContact(contactId, currentTags, { add = [], remove = [] }) {
+  try {
+    const next = new Set(currentTags);
+    remove.forEach(t => next.delete(t));
+    add.forEach(t => next.add(t));
+    const res = await fetch(`https://services.leadconnectorhq.com/contacts/${contactId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${GHL_TOKEN}`,
+        'Version': '2021-07-28',
+      },
+      body: JSON.stringify({ tags: Array.from(next) }),
+    });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      console.error(`[Webhook] retagContact ${res.status}: ${txt.slice(0, 200)}`);
+    }
+  } catch (err) {
+    console.error('[Webhook] retagContact error:', err.message);
+  }
+}
+
+async function createCancellationTask(contactId, { stripeCustomerId, sub }) {
+  try {
+    const dueDate = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    await fetch(`https://services.leadconnectorhq.com/contacts/${contactId}/tasks`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${GHL_TOKEN}`,
+        'Version': '2021-07-28',
+      },
+      body: JSON.stringify({
+        title: `AgentCopyAI subscription cancelled — ${stripeCustomerId}`,
+        body: `Subscription ${sub.id} cancelled. Reason: ${sub.cancellation_details?.reason || 'not specified'}. Send win-back sequence in 30 days.`,
+        dueDate,
+      }),
+    });
+  } catch (err) {
+    console.error('[Webhook] createCancellationTask error:', err.message);
+  }
+}
+
+async function createPaymentFailureTask(contactId, { stripeCustomerId, invoice }) {
+  try {
+    const dueDate = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    await fetch(`https://services.leadconnectorhq.com/contacts/${contactId}/tasks`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${GHL_TOKEN}`,
+        'Version': '2021-07-28',
+      },
+      body: JSON.stringify({
+        title: `⚠️ AgentCopyAI payment failed — ${stripeCustomerId}`,
+        body: `Invoice ${invoice.id} failed. Amount: $${(invoice.amount_due || 0) / 100}. Attempt ${invoice.attempt_count}. Reach out before Stripe gives up (~2 weeks).`,
+        dueDate,
+      }),
+    });
+  } catch (err) {
+    console.error('[Webhook] createPaymentFailureTask error:', err.message);
+  }
+}
+

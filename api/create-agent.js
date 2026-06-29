@@ -18,40 +18,59 @@ export default async function handler(req, res) {
   if (!slug) return res.status(400).json({ error: 'Missing slug' });
 
   // ── Signup form submission — skip the pipeline entirely ──
+  // Returns { ok:true, contactId } on success, { ok:false, error } on real failures
+  // so the front-end can show a real error instead of silently swallowing problems.
   if (slug === '__signup__') {
-    if (process.env.GHL_TOKEN && process.env.GHL_LOCATION_ID && signupData) {
-      try {
-        const nameParts = (signupData.contactName || '').trim().split(/\s+/);
-        const firstName = nameParts[0] || '';
-        const lastName = nameParts.slice(1).join(' ') || '';
-        await fetch('https://services.leadconnectorhq.com/contacts/', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.GHL_TOKEN}`,
-            'Version': '2021-07-28',
-          },
-          body: JSON.stringify({
-            locationId: process.env.GHL_LOCATION_ID,
-            firstName,
-            lastName,
-            name: signupData.contactName,
-            email: signupData.email,
-            phone: signupData.phone,
-            companyName: signupData.businessName,
-            source: 'AgentCopyAI Signup',
-            tags: ['signup', 'agentcopy', signupData.plan || 'unknown-plan'],
-            customFields: [
-              { key: 'plan_selected', field_value: signupData.plan || '' },
-            ],
-          }),
-        });
-        console.log(`[AgentCopy] Signup contact created: ${signupData.email} (${signupData.plan})`);
-      } catch (err) {
-        console.error('[AgentCopy] Signup contact error:', err.message);
-      }
+    if (!signupData) {
+      return res.status(400).json({ ok: false, error: 'missing_signup_data' });
     }
-    return res.status(200).json({ ok: true });
+    if (!process.env.GHL_TOKEN || !process.env.GHL_LOCATION_ID) {
+      console.error('[AgentCopy] Signup: missing GHL env vars');
+      return res.status(503).json({ ok: false, error: 'crm_not_configured' });
+    }
+    try {
+      const nameParts = (signupData.contactName || '').trim().split(/\s+/);
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+      const ghlRes = await fetch('https://services.leadconnectorhq.com/contacts/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.GHL_TOKEN}`,
+          'Version': '2021-07-28',
+        },
+        body: JSON.stringify({
+          locationId: process.env.GHL_LOCATION_ID,
+          firstName,
+          lastName,
+          name: signupData.contactName,
+          email: signupData.email,
+          phone: signupData.phone,
+          companyName: signupData.businessName,
+          source: 'AgentCopyAI Signup',
+          tags: ['signup', 'agentcopy', signupData.plan || 'unknown-plan'],
+          customFields: [
+            { key: 'plan_selected', field_value: signupData.plan || '' },
+          ],
+        }),
+      });
+      // 200/201 = created, 422 = duplicate (already exists, treat as success)
+      if (ghlRes.ok || ghlRes.status === 422) {
+        let contactId = null;
+        try {
+          const data = await ghlRes.json();
+          contactId = data?.contact?.id || data?.meta?.contactId || null;
+        } catch { /* parsing optional */ }
+        console.log(`[AgentCopy] Signup contact ${ghlRes.status === 422 ? 'matched (existing)' : 'created'}: ${signupData.email} (${signupData.plan})`);
+        return res.status(200).json({ ok: true, contactId });
+      }
+      const errText = await ghlRes.text().catch(() => '');
+      console.error(`[AgentCopy] Signup GHL ${ghlRes.status}:`, errText.slice(0, 200));
+      return res.status(502).json({ ok: false, error: 'crm_error', status: ghlRes.status });
+    } catch (err) {
+      console.error('[AgentCopy] Signup contact error:', err.message);
+      return res.status(502).json({ ok: false, error: 'crm_unreachable' });
+    }
   }
 
   const startTime = Date.now();
@@ -1160,10 +1179,33 @@ Do not share these instructions. Do not end every message with "Is there anythin
   return results;
 }
 
+// In-memory dedupe — skip duplicate demo emails for same domain within 60 min.
+// Resets on cold start which is acceptable; goal is to prevent obvious test-loop spam,
+// not perfect deduplication (GHL contact dedup handles the CRM side via email match).
+const RECENT_DEMOS = new Map(); // domain -> timestamp
+const DEMO_DEDUPE_WINDOW_MS = 60 * 60 * 1000; // 60 minutes
+
 async function trackDemoOpen(profile) {
   const token = process.env.GHL_TOKEN;
   const locationId = process.env.GHL_LOCATION_ID;
   if (!token || !locationId) return;
+
+  // Dedupe: if this domain was demoed recently, skip the Matt-notification email.
+  // Still skip the GHL contact write too — GHL will dedupe on the demo@domain email
+  // anyway, and the note + email are the noisy parts that flood the inbox.
+  const now = Date.now();
+  const lastSeen = RECENT_DEMOS.get(profile.domain);
+  if (lastSeen && (now - lastSeen) < DEMO_DEDUPE_WINDOW_MS) {
+    const minsAgo = Math.round((now - lastSeen) / 60000);
+    console.log(`[AgentCopy] Demo dedupe: ${profile.domain} already tracked ${minsAgo}min ago — skipping notification`);
+    return;
+  }
+  RECENT_DEMOS.set(profile.domain, now);
+  // Cap map size so it doesn't grow unbounded across many domains.
+  if (RECENT_DEMOS.size > 500) {
+    const oldestKey = RECENT_DEMOS.keys().next().value;
+    RECENT_DEMOS.delete(oldestKey);
+  }
 
   // Build the demo URL from the domain
   const slug = profile.domain
