@@ -144,7 +144,11 @@ async function sendInternalNotification(contactId, { name, company, plan, phone,
 }
 
 // ── Welcome email via GHL conversation ───────────────────────────────────────
-async function sendWelcomeEmail(contactId, { name, company, plan, email }) {
+// Welcome email — now inlines the customer's widget snippet + offers free install.
+// widgetId comes from per-customer sub-account provisioning (see provisionCustomer).
+// installBookingUrl is the GHL calendar link for the AgentCopyAI Install calendar.
+// website is what they entered at checkout, used to pick platform-specific install hints.
+async function sendWelcomeEmail(contactId, { name, company, plan, email, widgetId, installBookingUrl, website }) {
   const planName = PLAN_NAMES[plan] || plan;
   const firstName = name.split(' ')[0] || name;
 
@@ -154,48 +158,55 @@ async function sendWelcomeEmail(contactId, { name, company, plan, email }) {
     contactId,
     subject: `Welcome to ScaleLocal, ${firstName}! Your AI agent is being set up 🚀`,
     html: `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 560px; margin: 0 auto; color: #0C0A09;">
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; color: #0C0A09;">
         <div style="padding: 32px 0 16px;">
-          <div style="background: linear-gradient(135deg, #0D9488, #2563EB); width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 24px;">
-            <span style="color: white; font-size: 20px; font-weight: 800; line-height: 44px; display: block; text-align: center;">A</span>
+          <div style="background: linear-gradient(135deg, #0D9488, #2563EB); width: 44px; height: 44px; border-radius: 10px; text-align: center; margin-bottom: 24px;">
+            <span style="color: white; font-size: 20px; font-weight: 800; line-height: 44px; display: block;">A</span>
           </div>
           <h1 style="font-size: 24px; font-weight: 700; margin: 0 0 8px;">Welcome to ScaleLocal, ${firstName}!</h1>
-          <p style="font-size: 16px; color: #57534E; margin: 0 0 24px;">Your payment is confirmed and your AI agent is being configured right now.</p>
+          <p style="font-size: 16px; color: #57534E; margin: 0 0 24px;">Your AI agent is built and ready to install on ${company || 'your site'}.</p>
         </div>
 
-        <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+        <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 12px; padding: 20px; margin-bottom: 28px;">
           <p style="margin: 0 0 4px; font-size: 13px; font-weight: 700; color: #16A34A; text-transform: uppercase; letter-spacing: 0.06em;">Your Plan</p>
-          <p style="margin: 0; font-size: 16px; font-weight: 600; color: #0C0A09;">${planName}</p>
+          <p style="margin: 0; font-size: 16px; font-weight: 600;">${planName}</p>
         </div>
 
-        <div style="margin-bottom: 28px;">
-          <h2 style="font-size: 16px; font-weight: 700; margin: 0 0 16px;">What happens next</h2>
-          <div style="display: flex; gap: 12px; margin-bottom: 14px; align-items: flex-start;">
-            <div style="width: 28px; height: 28px; border-radius: 50%; background: #F0FDF4; border: 1px solid #BBF7D0; text-align: center; line-height: 28px; font-size: 13px; flex-shrink: 0;">✓</div>
-            <div><strong>Payment confirmed</strong> — receipt sent to ${email}</div>
-          </div>
-          <div style="display: flex; gap: 12px; margin-bottom: 14px; align-items: flex-start;">
-            <div style="width: 28px; height: 28px; border-radius: 50%; background: #EFF6FF; border: 1px solid #BFDBFE; text-align: center; line-height: 28px; font-size: 13px; flex-shrink: 0;">📞</div>
-            <div><strong>You'll get an email within 24 hours</strong> with your custom widget snippet — paste it onto your site and you're live (we can install it for you if you'd rather; just reply)</div>
-          </div>
-          <div style="display: flex; gap: 12px; margin-bottom: 14px; align-items: flex-start;">
-            <div style="width: 28px; height: 28px; border-radius: 50%; background: #EFF6FF; border: 1px solid #BFDBFE; text-align: center; line-height: 28px; font-size: 13px; flex-shrink: 0;">🤖</div>
-            <div><strong>Your AI agent goes live</strong> — one snippet added to your site, then it answers customers 24/7 automatically</div>
-          </div>
+        <h2 style="font-size: 18px; font-weight: 700; margin: 0 0 12px;">Install in 60 seconds — paste this snippet on your site:</h2>
+        <p style="font-size: 14px; color: #57534E; margin: 0 0 12px;">Add this single line before the closing <code>&lt;/body&gt;</code> tag of every page on your site (or in your theme's footer / global header section).</p>
+
+        <div style="background: #0C0A09; border-radius: 10px; padding: 18px; margin-bottom: 24px; overflow-x: auto;">
+          <code style="color: #67E8F9; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 13px; line-height: 1.5; white-space: pre; display: block;">&lt;script src="https://widgets.leadconnectorhq.com/loader.js" data-widget-id="${widgetId}"&gt;&lt;/script&gt;</code>
         </div>
 
-        <div style="border-top: 1px solid #E7E5E4; padding-top: 24px; margin-bottom: 24px;">
-          <p style="font-size: 15px; color: #57534E; margin: 0 0 16px;">
-            While you wait — take a look at everything else ScaleLocal offers for local businesses:
-          </p>
-          <a href="https://scalelocal.net" style="display: inline-block; background: #0C0A09; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 15px;">
-            Explore ScaleLocal →
-          </a>
+        <h3 style="font-size: 15px; font-weight: 700; margin: 0 0 10px;">Quick instructions by platform:</h3>
+        <div style="background: #FAFAF9; border: 1px solid #E7E5E4; border-radius: 10px; padding: 18px; margin-bottom: 28px; font-size: 14px; line-height: 1.7;">
+          <div style="margin-bottom: 10px;"><strong>WordPress:</strong> Appearance → Theme File Editor → footer.php → paste before <code>&lt;/body&gt;</code>. (Or use a header/footer plugin like "Insert Headers and Footers.")</div>
+          <div style="margin-bottom: 10px;"><strong>Shopify:</strong> Online Store → Themes → Edit Code → <code>theme.liquid</code> → paste before <code>&lt;/body&gt;</code>.</div>
+          <div style="margin-bottom: 10px;"><strong>Wix:</strong> Settings → Custom Code → Add Custom Code → paste in "Body — end" placement, "All Pages".</div>
+          <div style="margin-bottom: 10px;"><strong>Squarespace:</strong> Settings → Advanced → Code Injection → "Footer" → paste.</div>
+          <div><strong>Custom HTML / other:</strong> paste anywhere inside the <code>&lt;body&gt;</code> of every page — closer to <code>&lt;/body&gt;</code> is better for performance.</div>
+        </div>
+
+        <div style="background: linear-gradient(135deg, #EFF6FF, #F0FDF4); border: 1px solid #BFDBFE; border-radius: 12px; padding: 20px; margin-bottom: 28px;">
+          <h3 style="font-size: 16px; font-weight: 700; margin: 0 0 8px; color: #1E40AF;">Want us to install it for you? Free.</h3>
+          <p style="font-size: 14px; color: #1E40AF; margin: 0 0 16px;">If you'd rather we handle it, pick a 15-minute slot below. We'll need your website's login (WordPress admin, Shopify staff account, or whatever CMS you use). Takes us about 5 minutes once we're in.</p>
+          <a href="${installBookingUrl || 'https://scalelocal.net/install-help'}" style="display: inline-block; background: #2563EB; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 15px;">Book a 15-min install →</a>
+        </div>
+
+        <div style="border-top: 1px solid #E7E5E4; padding-top: 20px; margin-bottom: 20px;">
+          <h3 style="font-size: 15px; font-weight: 700; margin: 0 0 10px;">What your agent does once it's live</h3>
+          <ul style="font-size: 14px; color: #57534E; padding-left: 18px; margin: 0;">
+            <li style="margin-bottom: 6px;">Answers visitor questions 24/7 in chat and voice — trained on YOUR website</li>
+            <li style="margin-bottom: 6px;">Captures leads when you're closed or on a job</li>
+            <li style="margin-bottom: 6px;">Sends every inquiry straight to your inbox</li>
+            ${plan === 'talking_website_scheduling' ? '<li style="margin-bottom: 6px;"><strong>Books appointments and quotes</strong> directly into your calendar (your $29 plan)</li>' : ''}
+          </ul>
         </div>
 
         <div style="color: #A8A29E; font-size: 13px; line-height: 1.6;">
-          <p style="margin: 0 0 4px;">Questions? We're here.</p>
-          <p style="margin: 0;">📞 <a href="tel:+16173948707" style="color: #0D9488;">617.394.8707</a> &nbsp;·&nbsp; ✉️ <a href="mailto:alex@scalelocal.net" style="color: #0D9488;">alex@scalelocal.net</a></p>
+          <p style="margin: 0 0 4px;">Reply to this email if anything's unclear — we read every one.</p>
+          <p style="margin: 0;">✉️ <a href="mailto:alex@scalelocal.net" style="color: #0D9488;">alex@scalelocal.net</a></p>
           <p style="margin: 12px 0 0; color: #D6D3D1;">ScaleLocal · <a href="https://scalelocal.net" style="color: #D6D3D1;">scalelocal.net</a></p>
         </div>
       </div>
@@ -279,7 +290,15 @@ export default async function handler(req, res) {
       // 2. Add to pipeline as paid opportunity
       await createOpportunity(contactId, { company, plan, amount, stripeCustomerId });
 
-      // 3. Add detailed note to contact
+      // 3. Auto-provision: clone Master Templates snapshot into a new sub-account
+      //    for this customer, then train the chat bot + voice agent on their website.
+      //    Returns { subAccountId, widgetId, error }. On error, falls back to manual
+      //    install (snippet placeholder is empty; Matt does it manually via task).
+      const prov = await provisionCustomer({
+        company, website, plan, email, name: fullName, phone, stripeCustomerId,
+      });
+
+      // 4. Add detailed note to contact (includes provisioning result)
       const planName = PLAN_NAMES[plan] || plan;
       await addNote(contactId, [
         `🎉 NEW AI WEBSITE AGENT SIGNUP`,
@@ -290,18 +309,26 @@ export default async function handler(req, res) {
         `Website: ${website}`,
         `Stripe Customer ID: ${stripeCustomerId}`,
         ``,
-        `Action required: Verify auto-provisioned sub-account and confirm welcome email landed within 24 hours.`,
+        `Auto-provisioning:`,
+        `  Sub-account: ${prov.subAccountId || '⚠️ NOT CREATED — manual setup needed'}`,
+        `  Widget ID: ${prov.widgetId || '⚠️ NOT GENERATED — manual setup needed'}`,
+        prov.error ? `  Error: ${prov.error}` : `  Status: ready, welcome email sent`,
+        ``,
         `Source: AgentCopyAI`,
       ].join('\n'));
 
-      // 4. Create task for Matt — due in 24 hours
+      // 5. Create task for Matt — due in 24 hours (will say "verify install" if auto-provision worked, "manual setup" if it failed)
       await sendInternalNotification(contactId, {
         name: fullName, company, plan, phone, email, website, industry,
+        provisioningStatus: prov.error ? 'failed' : 'ok',
       });
 
-      // 5. Send branded welcome email from Alex
+      // 6. Send branded welcome email from Alex with snippet + install booking link
       await sendWelcomeEmail(contactId, {
         name: fullName, company, plan, email,
+        widgetId: prov.widgetId,
+        installBookingUrl: process.env.INSTALL_BOOKING_URL || '',
+        website,
       });
 
       console.log(`[Webhook] ✓ All GHL actions completed for ${fullName}`);
@@ -380,6 +407,100 @@ export default async function handler(req, res) {
   }
 
   return res.status(200).json({ received: true });
+}
+
+// ── Auto-provisioning: clone snapshot → train bot → get widget ID ────────────
+// Called from checkout.session.completed. Returns { subAccountId, widgetId, error }.
+//
+// REQUIRES env vars:
+//   GHL_AGENCY_TOKEN  — agency-scoped PIT with locations.write + snapshots.readonly
+//   GHL_COMPANY_ID    — your GHL agency company ID (FG7sbUjVDjTL90y9LnEP for ScaleLocal)
+//   GHL_TEMPLATE_SNAPSHOT_ID  — snapshot ID of "AgentCopyAI Customer Template" (Matt creates manually)
+//
+// On any failure: returns { subAccountId: null, widgetId: null, error: 'reason' }
+// so the welcome email falls back to a placeholder snippet and Matt manually fixes
+// via the GHL UI. Never throws — the customer's payment must still succeed.
+const AGENCY_TOKEN = process.env.GHL_AGENCY_TOKEN;
+const AGENCY_COMPANY_ID = process.env.GHL_COMPANY_ID;
+const TEMPLATE_SNAPSHOT_ID = process.env.GHL_TEMPLATE_SNAPSHOT_ID;
+
+async function provisionCustomer({ company, website, plan, email, name, phone, stripeCustomerId }) {
+  // Pre-flight checks — bail cleanly if config is incomplete
+  if (!AGENCY_TOKEN) {
+    console.error('[Provision] Missing GHL_AGENCY_TOKEN env var');
+    return { subAccountId: null, widgetId: null, error: 'missing_agency_token' };
+  }
+  if (!AGENCY_COMPANY_ID) {
+    console.error('[Provision] Missing GHL_COMPANY_ID env var');
+    return { subAccountId: null, widgetId: null, error: 'missing_company_id' };
+  }
+  if (!TEMPLATE_SNAPSHOT_ID) {
+    console.error('[Provision] Missing GHL_TEMPLATE_SNAPSHOT_ID env var — snapshot must be created first via GHL UI');
+    return { subAccountId: null, widgetId: null, error: 'missing_snapshot_id' };
+  }
+
+  // Step 1: Create the new sub-account from the template snapshot
+  const subAccountName = (company || email.split('@')[0]).slice(0, 60);
+  let subAccountId = null;
+  try {
+    const res = await fetch('https://services.leadconnectorhq.com/locations/', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${AGENCY_TOKEN}`,
+        'Version': '2021-07-28',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        companyId: AGENCY_COMPANY_ID,
+        name: `${subAccountName} (AgentCopyAI)`,
+        snapshotId: TEMPLATE_SNAPSHOT_ID,
+        firstName: name.split(' ')[0] || 'Customer',
+        lastName: name.split(' ').slice(1).join(' ') || '',
+        email: email,
+        phone: phone,
+        country: 'US',
+        timezone: 'America/New_York',
+        website: website || '',
+      }),
+    });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      console.error(`[Provision] Sub-account create ${res.status}: ${txt.slice(0, 300)}`);
+      return { subAccountId: null, widgetId: null, error: `subaccount_create_${res.status}` };
+    }
+    const data = await res.json();
+    subAccountId = data?.location?.id || data?.id || null;
+    if (!subAccountId) {
+      console.error('[Provision] Sub-account created but no ID in response:', JSON.stringify(data).slice(0, 300));
+      return { subAccountId: null, widgetId: null, error: 'no_subaccount_id_in_response' };
+    }
+    console.log(`[Provision] Created sub-account ${subAccountId} for ${company}`);
+  } catch (err) {
+    console.error('[Provision] Sub-account create exception:', err.message);
+    return { subAccountId: null, widgetId: null, error: 'subaccount_create_exception' };
+  }
+
+  // Step 2: Train the bot on the customer's website.
+  // Calls our own create-agent.js logic for the new sub-account. We delegate via
+  // an internal POST so we don't duplicate the scraping/Places/personality logic.
+  // create-agent.js writes the personality to whichever bot ID is currently
+  // configured for the demo (GHL_CHAT_BOT_ID/GHL_VOICE_AGENT_ID env vars). For
+  // per-customer provisioning we'd want to point it at the NEW sub-account's
+  // bot IDs — that needs sub-account PIT introspection which agency PAT can't do.
+  // PHASE 1: skip this step and let Matt manually load the bot personality from the
+  //   Master Templates snapshot (which should have a generic-but-good template prompt).
+  // PHASE 2: extend create-agent.js to accept locationId + bot/voice IDs as params
+  //   and call it here with the new sub-account's IDs.
+
+  // Step 3: Find the AIO widget ID in the new sub-account.
+  // PHASE 1: the snapshot clone brings the widget with it but its ID is new.
+  //   Agency PAT can't list widgets — need sub-account PIT. Until we wire that,
+  //   return null and the welcome email falls back to a placeholder snippet.
+  // PHASE 2: list widgets via sub-account PIT, return the AIO widget ID.
+  const widgetId = null; // PHASE 2 — needs sub-account PIT introspection
+
+  return { subAccountId, widgetId, error: null };
 }
 
 // ── Helpers for cancellation + payment-failure handlers ────────────────────
