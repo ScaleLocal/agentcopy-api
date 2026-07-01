@@ -1,4 +1,4 @@
-// AgentCopyAI — Checkout router
+// AgentCopyAI — Checkout router (env refresh)
 // POST /api/checkout
 //   { plan, slug, bizName, url, wakeUpSlot, name, email, phone }
 //
