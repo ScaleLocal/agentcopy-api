@@ -2,6 +2,8 @@
 // Vercel Serverless Function
 // POST /api/create-agent { slug: "asahi-america" }
 
+import { WAKEUP_POOL, appendDemoLog } from '../lib/wakeup.js';
+
 export default async function handler(req, res) {
   // CORS
   // Allow both agentcopyai.com and scalelocal.net origins
@@ -148,6 +150,8 @@ export default async function handler(req, res) {
       try {
         ghlAgent = await createGHLAgent(profile, systemPrompt, wakeUpSlot);
         logWakeUpSession({ slot: wakeUpSlot.slot, slug, bizName: profile.name, url: domain });
+        // Durable per-slot provision log → lets the scheduled sweep attribute demo leads to this business.
+        await appendDemoLog(wakeUpSlot, domain);
       } catch (err) {
         console.error('[AgentCopy] WakeUp slot error:', err.message);
       }
@@ -1025,13 +1029,7 @@ If they seem ready: "It sounds like [Growth Package / AI Receptionist / etc.] wo
 // Config below is the authoritative copy of the API_Keys.md
 // "GHL — WakeUpAgent Pool" table (populated 2026-06-30).
 // Chat widget id == voice widget id (AIO widget serves both).
-const WAKEUP_POOL = [
-  { slot: 1, locationId: 'A0wI1MDgzCPxCGibhCJ5', pit: process.env.GHL_WAKEUP_PIT_1 || 'pit-ef5034b1-b7a3-440d-a900-69837fd5a201', chatWidgetId: '6a445fb54245a5c8f3fe2465', voiceAgentId: '6a445f394a7c3a61c199fa75', chatBotId: 'G7vMYdqvfj9y5blS3RJ3' },
-  { slot: 2, locationId: '7eVrFCQ703JyxD0eFuQR', pit: process.env.GHL_WAKEUP_PIT_2 || 'pit-b41fb655-adaf-445f-899a-3394d849b55e', chatWidgetId: '6a44608855ef5e6413afdd5d', voiceAgentId: '6a445f6f6cf2b0b79f4a79f0', chatBotId: 'ts1t35BfxB8qB0Ffw4pB' },
-  { slot: 3, locationId: 'pam1mGNUL3DcE2bKkSDz', pit: process.env.GHL_WAKEUP_PIT_3 || 'pit-78127f2f-3b0e-45dd-a628-302c218fa0d5', chatWidgetId: '6a4461d5bd10bf7f08de62f6', voiceAgentId: '6a445f706cf2b028b44a79f3', chatBotId: 'd6VSoMxJAXu1soYXFYko' },
-  { slot: 4, locationId: 'zZWZN8leA0wAH8ztMNd9', pit: process.env.GHL_WAKEUP_PIT_4 || 'pit-9a8b11f0-3ff8-4131-8369-c93aa83c8236', chatWidgetId: '6a446239638eec5af41afc87', voiceAgentId: '6a445f724a7c3a74d299fa7e', chatBotId: '9Om83mm3KsvVV5HdOfwK' },
-  { slot: 5, locationId: 'rmdCJwqWdHP3Lms0uiwj', pit: process.env.GHL_WAKEUP_PIT_5 || 'pit-33f4a570-0d34-412b-ac80-52b990922929', chatWidgetId: '6a4462a055ef5e6413b01bf7', voiceAgentId: '6a445f738af28a03320c8a0f', chatBotId: 'DqqN9sEmgHN8yg6PaRFH' },
-];
+// WAKEUP_POOL is imported from ../lib/wakeup.js (single source of truth).
 
 // Module-level round-robin counter. Vercel keeps a warm serverless
 // instance alive across requests, so this persists for the life of
