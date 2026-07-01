@@ -256,13 +256,14 @@ export default async function handler(req, res) {
       const customerDetails = session.customer_details || {};
       const customFields = session.custom_fields || [];
 
-      const fullName = customerDetails.name || 'Unknown';
+      const meta0 = session.metadata || {};
+      const fullName = customerDetails.name || meta0.contactName || 'Unknown';
       const nameParts = fullName.trim().split(/\s+/);
       const firstName = nameParts[0] || 'Unknown';
       const lastName = nameParts.slice(1).join(' ') || '';
 
       const email   = customerDetails.email || '';
-      const phone   = customerDetails.phone || '';
+      const phone   = customerDetails.phone || meta0.contactPhone || '';
       // Prefer the WakeUpAgent demo metadata (set by /api/checkout) when present:
       // it carries the exact business the visitor demoed. Fall back to the
       // Stripe custom_fields collected on the hosted form for legacy links.

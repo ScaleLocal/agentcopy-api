@@ -50,7 +50,7 @@ export default async function handler(req, res) {
   const price = PRICES[plan];
   if (!price) return res.status(400).json({ error: 'Invalid plan' });
 
-  const { slug = '', bizName = '', url = '', wakeUpSlot = '', email = '' } = body;
+  const { slug = '', bizName = '', url = '', wakeUpSlot = '', name = '', email = '', phone = '' } = body;
 
   // If no secret key configured, degrade gracefully to the static link.
   const STRIPE_KEY = process.env.STRIPE_KEY;
@@ -82,6 +82,8 @@ export default async function handler(req, res) {
     'metadata[url]': url,
     'metadata[wakeUpSlot]': String(wakeUpSlot || ''),
     'metadata[source]': 'websitewakeup_demo',
+    'metadata[contactName]': name,
+    'metadata[contactPhone]': phone,
     // Copy the same metadata onto the subscription so it survives on renewals.
     'subscription_data[metadata][product]': PRODUCT_TAG[plan] || plan,
     'subscription_data[metadata][slug]': slug,
