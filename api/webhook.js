@@ -263,12 +263,20 @@ export default async function handler(req, res) {
 
       const email   = customerDetails.email || '';
       const phone   = customerDetails.phone || '';
-      const company  = customFields.find(f => f.key === 'business_name')?.text?.value
+      // Prefer the WakeUpAgent demo metadata (set by /api/checkout) when present:
+      // it carries the exact business the visitor demoed. Fall back to the
+      // Stripe custom_fields collected on the hosted form for legacy links.
+      const meta = session.metadata || {};
+      const company  = meta.bizName
+                    || customFields.find(f => f.key === 'business_name')?.text?.value
                     || customFields.find(f => f.key === 'company_name')?.text?.value
                     || '';
-      const website  = customFields.find(f => f.key === 'website_url')?.text?.value || '';
+      const website  = meta.url
+                    || customFields.find(f => f.key === 'website_url')?.text?.value || '';
       const industry = customFields.find(f => f.key === 'industry_trade')?.text?.value || '';
-      const plan    = session.metadata?.product || session.metadata?.plan || 'talking_website';
+      const plan    = meta.product || meta.plan || 'talking_website';
+      const demoSlug    = meta.slug || '';
+      const demoSlot    = meta.wakeUpSlot || '';
       const amount  = (session.amount_total || 1900) / 100; // Fallback default = $19 (new base tier)
       const stripeCustomerId = session.customer || '';
 
@@ -307,6 +315,8 @@ export default async function handler(req, res) {
         `Amount paid: $${amount}`,
         `Company: ${company}`,
         `Website: ${website}`,
+        demoSlug ? `Demo slug: ${demoSlug}` : '',
+        demoSlot ? `WakeUpAgent slot used in demo: ${demoSlot}` : '',
         `Stripe Customer ID: ${stripeCustomerId}`,
         ``,
         `Auto-provisioning:`,
