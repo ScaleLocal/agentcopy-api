@@ -136,9 +136,22 @@ export default async function handler(req, res) {
     // ── Step 5: Generate the AI receptionist system prompt ──
     const systemPrompt = generateSystemPrompt(profile);
 
-    // ── Step 6: GHL agent creation (when AI Employee is active) ──
+    // ── Step 6: GHL agent creation ──
+    // websitewakeup.com uses the WakeUpAgent pool rotation: pick the
+    // next slot, rewrite THAT sub-account's agents to this business,
+    // and return its widget id so the iframe loads the right widget.
+    // Set USE_WAKEUP_POOL=false to fall back to the single legacy agent.
     let ghlAgent = null;
-    if (process.env.GHL_TOKEN && process.env.GHL_LOCATION_ID) {
+    const useWakeUpPool = process.env.USE_WAKEUP_POOL !== 'false';
+    const wakeUpSlot = useWakeUpPool ? pickWakeUpSlot() : null;
+    if (wakeUpSlot) {
+      try {
+        ghlAgent = await createGHLAgent(profile, systemPrompt, wakeUpSlot);
+        logWakeUpSession({ slot: wakeUpSlot.slot, slug, bizName: profile.name, url: domain });
+      } catch (err) {
+        console.error('[AgentCopy] WakeUp slot error:', err.message);
+      }
+    } else if (process.env.GHL_TOKEN && process.env.GHL_LOCATION_ID) {
       try {
         ghlAgent = await createGHLAgent(profile, systemPrompt);
       } catch (err) {
@@ -167,6 +180,7 @@ export default async function handler(req, res) {
       agentPhone: ghlAgent?.phone || null,
       widgetEmbed: ghlAgent?.widgetEmbed || null,
       chatWidgetId: ghlAgent?.chatWidgetId || null,
+      wakeUpSlot: ghlAgent?.slot || null,
       buildTime,
       siteError,
     });
@@ -999,27 +1013,73 @@ If they seem ready: "It sounds like [Growth Package / AI Receptionist / etc.] wo
 
 
 // ═══════════════════════════════════════════════════════════
+// WAKEUPAGENT POOL — 5-slot demo rotation (websitewakeup.com)
+// ═══════════════════════════════════════════════════════════
+// Each visitor to websitewakeup.com gets one of 5 pre-built GHL
+// sub-accounts ("WakeUpAgent 1-5"). We rotate through them so two
+// concurrent visitors don't overwrite each other's demo agent.
+// Config below is the authoritative copy of the API_Keys.md
+// "GHL — WakeUpAgent Pool" table (populated 2026-06-30).
+// Chat widget id == voice widget id (AIO widget serves both).
+const WAKEUP_POOL = [
+  { slot: 1, locationId: 'A0wI1MDgzCPxCGibhCJ5', pit: process.env.GHL_WAKEUP_PIT_1 || 'pit-ef5034b1-b7a3-440d-a900-69837fd5a201', chatWidgetId: '6a445fb54245a5c8f3fe2465', voiceAgentId: '6a445f394a7c3a61c199fa75', chatBotId: 'G7vMYdqvfj9y5blS3RJ3' },
+  { slot: 2, locationId: '7eVrFCQ703JyxD0eFuQR', pit: process.env.GHL_WAKEUP_PIT_2 || 'pit-b41fb655-adaf-445f-899a-3394d849b55e', chatWidgetId: '6a44608855ef5e6413afdd5d', voiceAgentId: '6a445f6f6cf2b0b79f4a79f0', chatBotId: 'ts1t35BfxB8qB0Ffw4pB' },
+  { slot: 3, locationId: 'pam1mGNUL3DcE2bKkSDz', pit: process.env.GHL_WAKEUP_PIT_3 || 'pit-78127f2f-3b0e-45dd-a628-302c218fa0d5', chatWidgetId: '6a4461d5bd10bf7f08de62f6', voiceAgentId: '6a445f706cf2b028b44a79f3', chatBotId: 'd6VSoMxJAXu1soYXFYko' },
+  { slot: 4, locationId: 'zZWZN8leA0wAH8ztMNd9', pit: process.env.GHL_WAKEUP_PIT_4 || 'pit-9a8b11f0-3ff8-4131-8369-c93aa83c8236', chatWidgetId: '6a446239638eec5af41afc87', voiceAgentId: '6a445f724a7c3a74d299fa7e', chatBotId: '9Om83mm3KsvVV5HdOfwK' },
+  { slot: 5, locationId: 'rmdCJwqWdHP3Lms0uiwj', pit: process.env.GHL_WAKEUP_PIT_5 || 'pit-33f4a570-0d34-412b-ac80-52b990922929', chatWidgetId: '6a4462a055ef5e6413b01bf7', voiceAgentId: '6a445f738af28a03320c8a0f', chatBotId: 'DqqN9sEmgHN8yg6PaRFH' },
+];
+
+// Module-level round-robin counter. Vercel keeps a warm serverless
+// instance alive across requests, so this persists for the life of
+// that instance — good enough for the stated traffic (~25/hr, <5
+// concurrent, <60s sessions). Cold starts reset to slot 1, which is
+// harmless (worst case: two cold visitors briefly share slot 1).
+// Race conditions are accepted per the build spec.
+let _lastSlotIndex = -1;
+function pickWakeUpSlot() {
+  _lastSlotIndex = (_lastSlotIndex + 1) % WAKEUP_POOL.length;
+  return WAKEUP_POOL[_lastSlotIndex];
+}
+
+// Lightweight in-memory session log (last 200). Mirrors what a KV
+// table would hold; exposed for the demo-history feature Matt wants.
+// Survives only for the warm instance — for durable history this
+// should be swapped for Vercel KV / a DB, but that's not provisioned
+// yet so we keep it in-memory to avoid a hard dependency.
+const WAKEUP_SESSION_LOG = [];
+function logWakeUpSession(entry) {
+  WAKEUP_SESSION_LOG.push({ ...entry, at: new Date().toISOString() });
+  if (WAKEUP_SESSION_LOG.length > 200) WAKEUP_SESSION_LOG.shift();
+  console.log(`[WakeUp] session slot=${entry.slot} slug=${entry.slug} biz=${entry.bizName} url=${entry.url}`);
+}
+
+// ═══════════════════════════════════════════════════════════
 // GHL INTEGRATION — Agent creation + CRM tracking
 // ═══════════════════════════════════════════════════════════
 
-async function createGHLAgent(profile, systemPrompt) {
-  const token = process.env.GHL_TOKEN;
+async function createGHLAgent(profile, systemPrompt, slot = null) {
+  // When a WakeUpAgent slot is supplied (websitewakeup.com rotation),
+  // target THAT sub-account's PIT + agent ids. Otherwise fall back to
+  // the single AgentCopyAI env-var agent (agentcopyai.com legacy flow).
+  const token = slot ? slot.pit : process.env.GHL_TOKEN;
   // Voice AI requires a token with voice scope.
   // GHL_VOICE_TOKEN = old integration token that has voice scope
   // Falls back to hardcoded old token so voice works even if env var not set
   // Env-only — no hardcoded fallback. The previously-hardcoded PIT was leaked in this
   // repo's git history and MUST be revoked at the GHL agency settings → Private Integrations.
   // Current value lives in API_Keys.md → GHL — AgentCopyAI Voice Fallback Token.
-  const voiceToken = process.env.GHL_VOICE_TOKEN;
-  const locationId = process.env.GHL_LOCATION_ID;
-  const voiceAgentId = process.env.GHL_VOICE_AGENT_ID;
-  const chatBotId = process.env.GHL_CHAT_BOT_ID;
+  // For a slot, the slot PIT has full scope (incl. Voice AI), so use it
+  // for voice too. Legacy flow keeps the separate voice fallback token.
+  const voiceToken = slot ? slot.pit : process.env.GHL_VOICE_TOKEN;
+  const locationId = slot ? slot.locationId : process.env.GHL_LOCATION_ID;
+  const voiceAgentId = slot ? slot.voiceAgentId : process.env.GHL_VOICE_AGENT_ID;
+  const chatBotId = slot ? slot.chatBotId : process.env.GHL_CHAT_BOT_ID;
   if (!token || !locationId) {
     console.log('[AgentCopy] Missing GHL config — skipping agent update');
     return null;
   }
 
-  const results = { phone: null, widgetEmbed: null, chatWidgetId: null };
+  const results = { phone: null, widgetEmbed: null, chatWidgetId: slot ? slot.chatWidgetId : null, slot: slot ? slot.slot : null };
 
   // ── Update Voice AI agent ──
   if (voiceAgentId) {
@@ -1099,7 +1159,7 @@ ${SCALELOCAL_PACKAGES}
 ${SCALELOCAL_NEPQ}`;
       }
 
-      const instructions = `
+      let instructions = `
 OPENING MESSAGE — send this as your very first message when the chat opens:
 "Welcome to ${profile.name}! I'm your AI assistant — ask me anything about our services, hours, pricing, or how we can help."
 Do not wait for the visitor to speak first. Send the opening message immediately when the chat loads.
