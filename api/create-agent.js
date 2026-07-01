@@ -945,7 +945,7 @@ You have access to ${profile.name}'s calendar and you book appointments right he
 
 1. Offer two specific openings in normal business hours (weekdays, roughly 8 to 5), each a one-hour block: "I've got Wednesday at ten, or Thursday at two — which works better for you?" Flex to what they ask for. Weekend or after-hours request: "Our schedule runs weekdays, eight to five — want me to grab the closest opening?"
 2. When they pick, lock it in: "Perfect — Tuesday at three it is."
-3. Collect their details, one at a time, naturally: what the visit is for (the service or the problem, so the team arrives ready), their name, the address you'll be coming to, and the best phone number to reach them in case you need to get in touch before arrival.
+3. Collect their details, one at a time, naturally: what the visit is for (the service or the problem, so the team arrives ready), their name, the address you'll be coming to, the best phone number to reach them in case you need to get in touch before arrival, and the best email to send their confirmation and reminder to.
 4. Confirm warmly and specifically: "You're all set, [Name]. We've got you down for Tuesday at three at [address], and we'll give you a call at that number if anything changes. See you then."
 
 Handle these too: if it's urgent or an emergency, don't offer next week — get them the soonest opening, and for a true after-hours emergency give them the business phone so a person can jump on it. If they already have an appointment or want to move it, reschedule cleanly and re-confirm their details rather than double-booking. And don't force a booking — if they're just asking about pricing, hours, or services, answer that first and only offer to book when it's a natural next step.
@@ -1201,7 +1201,7 @@ You have live access to ${profile.name}'s calendar and you book appointments dir
 
 1. OFFER TIMES: Check the calendar and offer two specific openings in normal business hours (Monday-Friday, roughly 8am-5pm), each a one-hour block — e.g. "I can get you in Wednesday at 10am or Thursday at 2pm — which works better?" Flex to what they ask for. Weekend or after-hours: "Our schedule runs weekdays 8 to 5 — want me to grab the closest opening?"
 2. LOCK IT IN: Once they pick, confirm it back — "Perfect, Tuesday at 3pm it is."
-3. COLLECT DETAILS, one question at a time, conversationally: what the visit is for (the service needed or the problem — so the team arrives ready); their name; the address you'll be coming to (the service/visit location); and the best phone number to reach them, "in case we need to get in touch before we head out."
+3. COLLECT DETAILS, one question at a time, conversationally: what the visit is for (the service needed or the problem — so the team arrives ready); their name; the address you'll be coming to (the service/visit location); the best phone number to reach them, "in case we need to get in touch before we head out"; and their email, "so I can send your confirmation and a reminder."
 4. CONFIRM warmly and specifically: "You're all set, [Name]! We've got you booked for [Day] at [Time] at [Address]. We'll send a reminder, and we'll call if anything comes up. See you then!"
 
 HANDLE THESE TOO:
