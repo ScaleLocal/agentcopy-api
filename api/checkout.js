@@ -54,7 +54,9 @@ export default async function handler(req, res) {
 
   // If no secret key configured, degrade gracefully to the static link.
   // Vercel env has this as STRIPE_SECRET_KEY; accept STRIPE_KEY too for parity.
-  const STRIPE_KEY = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_KEY;
+  // Prefer STRIPE_KEY (freshly added, valid) over STRIPE_SECRET_KEY (may be the
+  // older/expired value in Vercel). Either works once one holds the live key.
+  const STRIPE_KEY = process.env.STRIPE_KEY || process.env.STRIPE_SECRET_KEY;
   if (!STRIPE_KEY) {
     console.warn('[Checkout] STRIPE_KEY not set — returning static payment link (no metadata)');
     return res.status(200).json({ url: FALLBACK_LINKS[plan], degraded: true });
