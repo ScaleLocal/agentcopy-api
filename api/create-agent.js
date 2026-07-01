@@ -6,7 +6,7 @@ export default async function handler(req, res) {
   // CORS
   // Allow both agentcopyai.com and scalelocal.net origins
   const origin = req.headers?.origin || '';
-  const allowedOrigins = ['https://agentcopyai.com', 'https://www.agentcopyai.com', 'https://scalelocal.net', 'https://www.scalelocal.net'];
+  const allowedOrigins = ['https://agentcopyai.com', 'https://www.agentcopyai.com', 'https://websitewakeup.com', 'https://www.websitewakeup.com', 'https://scalelocal.net', 'https://www.scalelocal.net'];
   const corsOrigin = allowedOrigins.includes(origin) ? origin : (process.env.ALLOWED_ORIGIN || 'https://agentcopyai.com');
   res.setHeader('Access-Control-Allow-Origin', corsOrigin);
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');

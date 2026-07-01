@@ -2,7 +2,9 @@
 // GET /api/proxy?url=https://wooster-roofing.com
 
 export default async function handler(req, res) {
-  const allowedOrigin = process.env.ALLOWED_ORIGIN || 'https://agentcopyai.com';
+  const origin = req.headers?.origin || '';
+  const allowed = ['https://agentcopyai.com', 'https://www.agentcopyai.com', 'https://websitewakeup.com', 'https://www.websitewakeup.com', 'https://scalelocal.net', 'https://www.scalelocal.net'];
+  const allowedOrigin = allowed.includes(origin) ? origin : (process.env.ALLOWED_ORIGIN || 'https://agentcopyai.com');
   res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
