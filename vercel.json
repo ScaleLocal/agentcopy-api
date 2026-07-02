@@ -42,7 +42,7 @@
   "crons": [
     {
       "path": "/api/reconcile-demo-tags",
-      "schedule": "7 * * * *"
+      "schedule": "0 8 * * *"
     }
   ]
 }
