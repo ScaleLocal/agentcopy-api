@@ -2,7 +2,7 @@
 // Vercel Serverless Function
 // POST /api/create-agent { slug: "asahi-america" }
 
-import { WAKEUP_POOL, appendDemoLog } from '../lib/wakeup.js';
+import { WAKEUP_POOL, appendDemoLog, claimSlot } from '../lib/wakeup.js';
 
 export default async function handler(req, res) {
   // CORS
@@ -145,7 +145,11 @@ export default async function handler(req, res) {
     // Set USE_WAKEUP_POOL=false to fall back to the single legacy agent.
     let ghlAgent = null;
     const useWakeUpPool = process.env.USE_WAKEUP_POOL !== 'false';
-    const wakeUpSlot = useWakeUpPool ? pickWakeUpSlot() : null;
+    // Active-use-aware assignment: claimSlot() picks the least-recently-
+  // heartbeated (idle) slot so we never steal a slot a live demo is
+  // actively showing. Falls back to round-robin if the lease registry
+  // can't be read.
+  const wakeUpSlot = useWakeUpPool ? await claimSlot(slug, pickWakeUpSlot) : null;
     if (wakeUpSlot) {
       try {
         ghlAgent = await createGHLAgent(profile, systemPrompt, wakeUpSlot);

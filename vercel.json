@@ -15,6 +15,9 @@
     },
     "api/reconcile-demo-tags.js": {
       "maxDuration": 60
+    },
+    "api/heartbeat.js": {
+      "maxDuration": 10
     }
   },
   "headers": [
